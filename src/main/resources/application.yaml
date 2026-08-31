@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: BatalhaNaval
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/battleship}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: ${PORT:8080}
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: battleship
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
