@@ -37,6 +37,16 @@ Cada PR deve:
 
 Evite PRs gigantes. Prefira entregas menores e revisáveis.
 
+## Ambiente local
+
+Antes de começar, confirme que o ambiente local está pronto:
+- Java 21 instalado;
+- Docker Desktop em execução;
+- Docker Compose disponível;
+- arquivo `.env` criado a partir de `.env.example` quando necessário.
+
+A execução local do backend será feita com PostgreSQL em container. Caso o Docker não esteja disponível, o projeto deve avisar claramente e não iniciar o banco local.
+
 ## Arquitetura
 
 Organize por domínio e mantenha as camadas.
@@ -94,9 +104,12 @@ Toda alteração estrutural do banco deve possuir migration Flyway.
 
 Não:
 - altere banco manualmente como solução permanente;
-- edite migrations já aplicadas em ambientes compartilhados.
+- edite migrations já aplicadas em ambientes compartilhados;
+- use `ddl-auto=update` como mecanismo principal de schema.
 
-Crie uma nova migration.
+Crie uma nova migration e mantenha o histórico consistente.
+
+Se houver checksum mismatch ou schema inconsistente no ambiente local, o caminho correto é reiniciar o volume do PostgreSQL e recriar o banco local para a base limpa.
 
 ## Regras de multiplayer
 
@@ -135,6 +148,14 @@ Casos importantes:
 - vitória;
 - abandono/desconexão.
 
+## VS Code / debug
+
+O projeto inclui configurações de execução para debug no VS Code:
+- `BN API - Local DB (Debug)`
+- `BN API - Production DB (Debug)`
+
+A configuração local já executa a verificação do Docker antes de iniciar e não abre o navegador ao final do boot.
+
 ## IA no desenvolvimento
 
 Ferramentas de IA são permitidas e incentivadas.
@@ -158,4 +179,5 @@ Checklist:
 [ ] Contratos alterados estão documentados
 [ ] Migrations necessárias foram incluídas
 [ ] Código gerado por IA foi revisado
+[ ] Execução local com Docker foi validada quando aplicável
 ```

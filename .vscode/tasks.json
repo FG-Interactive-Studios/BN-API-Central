@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "BN API: Verificar Docker Local",
+      "type": "shell",
+      "command": "if docker info > /dev/null 2>&1; then echo 'Docker esta aberto. Resetando banco local e subindo PostgreSQL...'; docker compose down -v >/dev/null 2>&1 || true; docker compose up -d postgres; else echo 'AVISO: Docker Desktop nao esta aberto ou o daemon nao esta disponivel. A aplicacao nao pode iniciar com banco local.'; exit 1; fi",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BN API: Stop Docker PostgreSQL",
+      "type": "shell",
+      "command": "docker compose down",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BN API: Debug Local DB",
+      "type": "shell",
+      "command": "./mvnw spring-boot:run",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "DB_URL": "jdbc:postgresql://localhost:5432/battleship",
+          "DB_USER": "postgres",
+          "DB_PASSWORD": "postgres",
+          "PORT": "8080"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "BN API: Debug Production DB",
+      "type": "shell",
+      "command": "./mvnw spring-boot:run",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "DB_URL": "jdbc:postgresql://prod-db.example.com:5432/battleship",
+          "DB_USER": "bn_app",
+          "DB_PASSWORD": "change-me",
+          "PORT": "8080"
+        }
+      },
+      "problemMatcher": []
+    }
+  ]
+}

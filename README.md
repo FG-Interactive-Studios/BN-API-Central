@@ -109,23 +109,34 @@ O cliente **não decide**:
 
 O cliente envia intenções. O servidor valida, altera o estado da partida e publica o resultado.
 
-## Executando localmente
-
-### Pré-requisitos
+## Pré-requisitos
 
 - Java 21
-- Docker + Docker Compose
+- Docker Desktop ou Docker Engine acessível
+- Docker Compose
 - Git
 
-### 1. Suba o PostgreSQL
+## Executando localmente
+
+### Opção 1: VS Code (recomendado)
+
+Use o launch `BN API - Local DB (Debug)` no VS Code.
+
+Ele executa automaticamente a task `BN API: Verificar Docker Local`, que:
+- verifica se o Docker está disponível;
+- se o Docker estiver indisponível, exibe aviso e aborta a inicialização;
+- se estiver disponível, reseta o banco local e sobe o PostgreSQL;
+- inicia a aplicação em debug sem abrir o navegador ao final.
+
+### Opção 2: terminal
+
+1. Suba o PostgreSQL:
 
 ```bash
 docker compose up -d
 ```
 
-### 2. Configure as variáveis de ambiente
-
-Copie o exemplo:
+2. Configure as variáveis de ambiente:
 
 ```bash
 cp .env.example .env
@@ -142,7 +153,7 @@ PORT=8080
 
 > Não faça commit do arquivo `.env`.
 
-### 3. Execute a aplicação
+3. Execute a aplicação:
 
 Linux/macOS:
 
@@ -155,6 +166,23 @@ Windows:
 ```powershell
 .\mvnw.cmd spring-boot:run
 ```
+
+## Configuração do banco local
+
+A aplicação usa PostgreSQL em container definido em `docker-compose.yml`.
+
+```yaml
+services:
+  postgres:
+    image: postgres:17
+    container_name: batalha-naval-postgres
+    environment:
+      POSTGRES_DB: battleship
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+```
+
+Quando o Docker estiver disponível, a task local do VS Code reseta o volume do banco para evitar o Flyway checksum mismatch durante a inicialização local.
 
 ## Health check
 
@@ -244,6 +272,13 @@ Exemplo:
 git checkout -b feature/user-profile
 ```
 
-Consulte também:
+## Documentação relacionada
+
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [AGENTS.md](./AGENTS.md)
+- [.env.example](./.env.example)
+
+## Observações
+
+- O debug local não abre o navegador automaticamente ao final do bootstrap.
+- Se o Docker Desktop não estiver aberto, a aplicação local não tentará iniciar sem aviso explícito.

@@ -25,6 +25,7 @@ Antes de modificar código:
 - Bean Validation
 - Flyway
 - PostgreSQL
+- Docker + Docker Compose
 
 Não introduza novas tecnologias ou dependências sem necessidade explícita.
 
@@ -37,6 +38,18 @@ Especialmente, não adicione por conta própria:
 - microserviços;
 - frameworks de mapeamento;
 - novas bibliotecas de autenticação.
+
+## Ambiente de execução local
+
+O fluxo local oficial do projeto usa PostgreSQL em container via Docker.
+
+A inicialização pelo VS Code deve seguir este comportamento:
+- verificar se o Docker Desktop/daemon está disponível;
+- se estiver indisponível,alertar e encerrar a inicialização local;
+- se estiver disponível, resetar o banco local e subir o PostgreSQL automaticamente;
+- iniciar a aplicação em modo debug sem abrir o navegador.
+
+Não devem existir passos manuais redundantes para iniciar a aplicação localmente quando o Docker está acessível.
 
 ## Organização
 
@@ -129,7 +142,9 @@ Ao trabalhar com matchmaking ou partidas:
 - use Flyway;
 - crie migrations incrementais;
 - não use `ddl-auto=update` como mecanismo principal de schema;
-- não grave secrets no repositório.
+- não grave secrets no repositório;
+- mantenha a migração inicial consistente com o schema da aplicação;
+- quando o histórico do banco local ficar inconsistente, reinicie o volume do PostgreSQL para reproduzir a base limpa.
 
 ## API e contratos
 
@@ -159,6 +174,16 @@ Priorize testes de:
 - timeout;
 - vitória;
 - compra/recompensa.
+
+Também validamos o boot completo da aplicação com o profile de teste e com o banco local Docker em execução.
+
+## VS Code / debug
+
+O projeto inclui configurações locais para execução em debug:
+- `BN API - Local DB (Debug)`
+- `BN API - Production DB (Debug)`
+
+A inicialização local deve rodar sem abrir o navegador automaticamente ao final do boot.
 
 ## Estilo de trabalho
 

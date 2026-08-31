@@ -1,0 +1,41 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "BN API - Local DB (Debug)",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.FGInteractive.BatalhaNaval.BatalhaNavalApplication",
+      "projectName": "BatalhaNaval",
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "BN API: Verificar Docker Local",
+      "env": {
+        "DB_URL": "jdbc:postgresql://localhost:5432/battleship",
+        "DB_USER": "postgres",
+        "DB_PASSWORD": "postgres",
+        "PORT": "8080"
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "BN API - Production DB (Debug)",
+      "type": "java",
+      "request": "launch",
+      "mainClass": "com.FGInteractive.BatalhaNaval.BatalhaNavalApplication",
+      "projectName": "BatalhaNaval",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "DB_URL": "jdbc:postgresql://prod-db.example.com:5432/battleship",
+        "DB_USER": "bn_app",
+        "DB_PASSWORD": "change-me",
+        "PORT": "8080"
+      },
+      "console": "integratedTerminal"
+    }
+  ]
+}
