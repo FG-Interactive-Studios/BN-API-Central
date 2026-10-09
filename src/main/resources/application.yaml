@@ -24,3 +24,9 @@ server:
 # For a frontend on another origin, set REALTIME_ALLOWED_ORIGINS explicitly.
 realtime:
   allowed-origins: ${REALTIME_ALLOWED_ORIGINS:}
+
+# MVP: WebSocket presence-based reconnect grace during an active battle.
+# A broken connection alone never gives an immediate win. Scope: one API instance.
+match:
+  disconnect-grace-seconds: ${MATCH_DISCONNECT_GRACE_SECONDS:120}
+  disconnect-sweep-ms: ${MATCH_DISCONNECT_SWEEP_MS:5000}

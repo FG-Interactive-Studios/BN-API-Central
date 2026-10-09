@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.jayway.jsonpath.JsonPath;
+import com.FGInteractive.BatalhaNaval.matchmaking.service.MatchmakingService;
+import java.time.Instant;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
@@ -28,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class BattleEnginePostgresIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired Environment environment;
+    @Autowired MatchmakingService matchmaking;
     private record Player(long id, String jwt) {}
 
     private Player player() throws Exception {
@@ -285,6 +288,109 @@ class BattleEnginePostgresIntegrationTests {
                 assertEquals(1,((Number)JsonPath.read(view(guest),"$.shotsReceived.length()")).intValue());
             }
         } finally {leave(host);}
+    }
+
+
+    @Test void forfeitRequiresJwtAndPreservesResultWhenOnePlayerLeaves() throws Exception {
+        mvc.perform(post("/api/matches/me/forfeit")).andExpect(status().isUnauthorized());
+        Player host=player(), guest=player();
+        try {
+            setup(host,guest);
+            mvc.perform(post("/api/matches/me/forfeit")
+                .header("Authorization","Bearer "+host.jwt)).andExpect(status().isConflict());
+            confirm(host);confirm(guest);
+            String lost=mvc.perform(post("/api/matches/me/forfeit")
+                .header("Authorization","Bearer "+host.jwt))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertEquals("ABANDONED",JsonPath.read(lost,"$.finishReason"));
+            assertEquals(guest.id,((Number)JsonPath.read(lost,"$.winnerId")).longValue());
+            assertEquals("FINISHED",JsonPath.read(view(guest),"$.status"));
+            mvc.perform(post("/api/matches/me/forfeit")
+                .header("Authorization","Bearer "+host.jwt))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.revision")
+                    .value(((Number)JsonPath.read(lost,"$.revision")).intValue()));
+            mvc.perform(post("/api/matches/me/forfeit")
+                .header("Authorization","Bearer "+guest.jwt))
+                .andExpect(status().isConflict());
+            leave(host);
+            // The opponent still has access to the result after the loser exits.
+            assertEquals("ABANDONED",JsonPath.read(view(guest),"$.finishReason"));
+            mvc.perform(get("/api/matches/me")
+                .header("Authorization","Bearer "+host.jwt)).andExpect(status().isNotFound());
+        } finally { leave(host); leave(guest); }
+    }
+
+    @Test void leavingDuringPlayCountsAsSurrenderAndRequiresASecondLeaveToExitResults() throws Exception {
+        Player host=player(), guest=player();
+        try {
+            setup(host,guest);confirm(host);confirm(guest);
+            leave(guest); // First DELETE is surrender; result remains inspectable.
+            String game=view(guest);
+            assertEquals("FINISHED",JsonPath.read(game,"$.status"));
+            assertEquals("ABANDONED",JsonPath.read(game,"$.finishReason"));
+            assertEquals(host.id,((Number)JsonPath.read(game,"$.winnerId")).longValue());
+            assertEquals("FINISHED",JsonPath.read(view(host),"$.status"));
+            leave(guest); // Second DELETE dismisses the finished result.
+            assertEquals("FINISHED",JsonPath.read(view(host),"$.status"));
+            mvc.perform(get("/api/matches/me")
+                .header("Authorization","Bearer "+guest.jwt)).andExpect(status().isNotFound());
+            leave(host);
+            mvc.perform(get("/api/matchmaking/lobbies/me")
+                .header("Authorization","Bearer "+host.jwt)).andExpect(status().isNotFound());
+        } finally { leave(host);leave(guest); }
+    }
+
+    @Test void websocketDisconnectCanRecoverOrTimeOutWithoutLeakingBoard() throws Exception {
+        Player host=player(), guest=player();
+        try {
+            setup(host,guest);
+            try(Connection guestSocket=connect(guest)) {
+                confirm(host);confirm(guest);
+                String initial=view(host);
+                @SuppressWarnings("unchecked")
+                Map<String,Object> deadlines=JsonPath.read(initial,"$.reconnectDeadlines");
+                assertTrue(deadlines.containsKey(Long.toString(host.id)));
+                // The disconnected host has grace: no immediate defeat.
+                assertEquals("PLAYING",JsonPath.read(initial,"$.status"));
+                try(Connection hostSocket=connect(host)) {
+                    boolean cleared=false;
+                    for(int i=0;i<50;i++) {
+                        @SuppressWarnings("unchecked")
+                        Map<String,Object> next=JsonPath.read(view(host),"$.reconnectDeadlines");
+                        if(!next.containsKey(Long.toString(host.id))) {cleared=true;break;}
+                        Thread.sleep(30);
+                    }
+                    assertTrue(cleared,"Reconnecting should cancel the deadline");
+                }
+                boolean waiting=false;
+                for(int i=0;i<50;i++) {
+                    @SuppressWarnings("unchecked")
+                    Map<String,Object> next=JsonPath.read(view(guest),"$.reconnectDeadlines");
+                    if(next.containsKey(Long.toString(host.id))) {waiting=true;break;}
+                    Thread.sleep(30);
+                }
+                assertTrue(waiting,"Closing the last tab must start a new grace period");
+                matchmaking.sweepDisconnectedAt(Instant.now().plusSeconds(125));
+                String finished=view(guest);
+                assertEquals("DISCONNECT_TIMEOUT",JsonPath.read(finished,"$.finishReason"));
+                assertEquals(guest.id,((Number)JsonPath.read(finished,"$.winnerId")).longValue());
+                String event=guestSocket.listener.nextType("BATTLE_UPDATED");
+                // An old queued snapshot may be received first; REST is authoritative.
+                assertNotNull(event);
+            }
+        } finally { leave(host);leave(guest); }
+    }
+
+    @Test void twoAbsentSocketsExpireIntoDrawRatherThanArbitraryWinner() throws Exception {
+        Player host=player(),guest=player();
+        try {
+            setup(host,guest);confirm(host);confirm(guest);
+            matchmaking.sweepDisconnectedAt(Instant.now().plusSeconds(125));
+            String result=view(host);
+            assertEquals("BOTH_DISCONNECTED",JsonPath.read(result,"$.finishReason"));
+            assertEquals("FINISHED",JsonPath.read(result,"$.status"));
+            assertNull((Object)JsonPath.read(result,"$.winnerId"));
+        } finally {leave(host);leave(guest);}
     }
 
     private Connection connect(Player p) throws Exception {
