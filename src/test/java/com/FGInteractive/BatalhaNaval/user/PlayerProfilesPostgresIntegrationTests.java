@@ -134,7 +134,7 @@ class PlayerProfilesPostgresIntegrationTests {
         mvc.perform(patch("/api/users/" + userBId)
             .header("Authorization", "Bearer " + accessA)
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"nickname\":\"Hijacked\"}")).andExpect(status().isNotFound());
+            .content("{\"nickname\":\"Hijacked\"}")).andExpect(status().isMethodNotAllowed());
     }
 
     @Test
