@@ -293,8 +293,15 @@ class PrivateLobbiesPostgresIntegrationTests {
                 assertEquals(true, JsonPath.read(online, "$.data.players[0].connected"));
                 assertNull(c.listener.noMessage());
 
+                // An additional tab of the same account receives the lobby
+                // snapshot although overall presence was already 'online'.
+                try (Connection additionalTab = connect(a)) {
+                    String otherTabView = additionalTab.listener.awaitType("LOBBY_UPDATED");
+                    assertEquals(code, JsonPath.read(otherTabView, "$.data.code"));
+                }
+
                 try (Connection guestSocket = connect(b)) {
-                    String bothOnline = hostSocket.listener.awaitType("LOBBY_UPDATED");
+                    String bothOnline = hostSocket.listener.awaitConnectedGuest();
                     assertEquals(true, JsonPath.read(bothOnline, "$.data.players[1].connected"));
                     String guestSnapshot = guestSocket.listener.awaitType("LOBBY_UPDATED");
                     assertEquals(code, JsonPath.read(guestSnapshot, "$.data.code"));
@@ -375,6 +382,10 @@ class PrivateLobbiesPostgresIntegrationTests {
         String awaitStatus(String status) throws Exception {
             return until(event -> "LOBBY_UPDATED".equals(JsonPath.read(event, "$.type"))
                 && status.equals(JsonPath.read(event, "$.data.status")));
+        }
+        String awaitConnectedGuest() throws Exception {
+            return until(event -> "LOBBY_UPDATED".equals(JsonPath.read(event, "$.type"))
+                && Boolean.TRUE.equals(JsonPath.read(event, "$.data.players[1].connected")));
         }
         String awaitDisconnectedGuest() throws Exception {
             return until(event -> "LOBBY_UPDATED".equals(JsonPath.read(event, "$.type"))

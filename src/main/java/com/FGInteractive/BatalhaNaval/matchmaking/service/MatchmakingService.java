@@ -138,6 +138,7 @@ public class MatchmakingService {
     public void onPresenceChanged(RealtimePresenceChangedEvent event) {
         LobbyRoom room;
         boolean changed;
+        LobbyResponse snapshot = null;
         synchronized (mutex) {
             String code = membership.get(event.userId());
             if (code == null) return;
@@ -145,8 +146,15 @@ public class MatchmakingService {
             if (room == null) return;
             changed = room.setConnected(event.userId(),
                 realtime.isPlayerConnected(event.userId()));
+            // A second tab must receive its initial snapshot even if the
+            // account was already online from another tab.
+            if (!changed) snapshot = view(room);
         }
-        if (changed) broadcast(room);
+        if (changed) {
+            broadcast(room);
+        } else {
+            realtime.sendToPlayer(event.userId(), "LOBBY_UPDATED", snapshot);
+        }
     }
 
     private void broadcast(LobbyRoom room) {
