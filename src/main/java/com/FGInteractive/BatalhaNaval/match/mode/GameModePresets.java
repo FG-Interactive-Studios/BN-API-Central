@@ -28,6 +28,15 @@ public class GameModePresets {
                 new ShipDefinition("BATTLESHIP",4),new ShipDefinition("CRUISER",3),
                 new ShipDefinition("DESTROYER",2))),LINEAR,classicMechanics());
     }
+    /** A triangular mask (square cells), proving that placement is not tied to rectangles. */
+    public static GameModeDefinition triangular() {
+        return new GameModeDefinition("triangular", "Triangular",
+            new TriangularGeometry(10),
+            new FleetDefinition(List.of(
+                new ShipDefinition("BATTLESHIP",4), new ShipDefinition("CRUISER",3),
+                new ShipDefinition("DESTROYER",2))), LINEAR, classicMechanics());
+    }
+    @Bean public GameModeDefinition triangularGameMode() { return triangular(); }
     @Bean public GameModeDefinition classicGameMode() { return classic(); }
     @Bean public GameModeDefinition quickGameMode() { return quick(); }
 }
