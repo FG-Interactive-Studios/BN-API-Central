@@ -84,6 +84,7 @@ Ao conectar, o backend também emite `LOBBY_UPDATED` com o snapshot atual.
 - Salas armazenadas somente em memória, uma instância da API,
   até 1000 salas simultâneas. Reiniciar a instância perde as salas.
 - Não há limpeza automática por ausência prolongada do anfitrião.
-- O estado `PREPARING` será integrado ao posicionamento de frota numa
-  PR seguinte. Sem tabuleiro, disparos ou partida jogável nesta entrega.
+- Após ambos confirmarem a frota em `PREPARING`, a sala muda para
+  `PLAYING`. Quando há vencedor, muda para `FINISHED`.
+  Consulte [Motor de batalha](battle-engine.md).
 - Sem novos schemas, migrations, dependências ou serviços externos.
