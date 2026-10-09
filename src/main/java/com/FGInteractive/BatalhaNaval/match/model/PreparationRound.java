@@ -25,6 +25,13 @@ public final class PreparationRound {
     }
 
     public GameModeDefinition mode() { return mode; }
+    public boolean bothConfirmed() { return confirmed.size() == 2; }
+    public Board confirmedBoard(long player) {
+        requireParticipant(player);
+        if (!confirmed.contains(player))
+            throw new IllegalStateException("Player has not confirmed the fleet");
+        return fleets.get(player);
+    }
 
     public void place(long player, Board board) {
         requireParticipant(player);

@@ -207,6 +207,33 @@ public class MatchmakingService {
         }
     }
 
+    /** Like withPreparingRoom, but allows read-only access to active/final rounds. */
+    public <T> T withActiveRoom(long userId, Function<LobbyRoom, T> action) {
+        synchronized (mutex) {
+            LobbyRoom room = myRoom(userId);
+            if (room.phase() == LobbyRoom.Phase.WAITING || room.guestId() == null)
+                throw problem(HttpStatus.CONFLICT, "Lobby is not preparing or playing");
+            return action.apply(room);
+        }
+    }
+
+    public <T> T withBattleRoom(long userId, Function<LobbyRoom, T> action) {
+        synchronized (mutex) {
+            LobbyRoom room = myRoom(userId);
+            if (room.phase() != LobbyRoom.Phase.PLAYING
+                && room.phase() != LobbyRoom.Phase.FINISHED)
+                throw problem(HttpStatus.CONFLICT, "Battle has not started");
+            return action.apply(room);
+        }
+    }
+
+    /** Snapshot broadcast occurs outside mutex; revision prevents stale UI updates. */
+    public void publishRoomFor(long userId) {
+        LobbyRoom room;
+        synchronized (mutex) { room = myRoom(userId); }
+        broadcast(room);
+    }
+
     private LobbyResponse view(LobbyRoom room) {
         List<LobbyPlayer> players = new ArrayList<>(2);
         players.add(player(room.hostId(), room.hostReady(), room.hostConnected()));

@@ -10,9 +10,9 @@ public class GameModePresets {
     private static Map<RuleSlot, RuleModule> classicMechanics() {
         return Map.of(
             RuleSlot.MOVEMENT, new DeclaredRule("stationary", RuleSlot.MOVEMENT),
-            RuleSlot.ATTACK, new DeclaredRule("standard-shot", RuleSlot.ATTACK),
-            RuleSlot.TURN, new DeclaredRule("alternating", RuleSlot.TURN),
-            RuleSlot.VICTORY, new DeclaredRule("all-ships-sunk", RuleSlot.VICTORY),
+            RuleSlot.ATTACK, new StandardShotRule(),
+            RuleSlot.TURN, new AlternatingTurnRule(),
+            RuleSlot.VICTORY, new AllShipsSunkRule(),
             RuleSlot.ABILITY, new DeclaredRule("disabled", RuleSlot.ABILITY));
     }
     public static GameModeDefinition classic() {

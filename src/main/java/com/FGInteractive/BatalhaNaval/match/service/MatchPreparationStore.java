@@ -1,6 +1,7 @@
 package com.FGInteractive.BatalhaNaval.match.service;
 
 import com.FGInteractive.BatalhaNaval.match.model.PreparationRound;
+import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class MatchPreparationStore {
     private final Map<String, PreparationRound> rounds = new HashMap<>();
+    private final Map<String, BattleRound> battles = new HashMap<>();
 
     public void start(String code, long hostId, long guestId, GameModeDefinition mode) {
         rounds.put(code, new PreparationRound(code, hostId, guestId, mode));
@@ -19,5 +21,17 @@ public class MatchPreparationStore {
         if (round == null) throw new IllegalStateException("Preparation state unavailable");
         return round;
     }
-    public void remove(String code) { rounds.remove(code); }
+    public void startBattle(String code, BattleRound battle) {
+        if (battles.putIfAbsent(code, battle) != null)
+            throw new IllegalStateException("Battle already exists");
+    }
+    public BattleRound battle(String code) {
+        BattleRound battle = battles.get(code);
+        if (battle == null) throw new IllegalStateException("Battle not found");
+        return battle;
+    }
+    public void remove(String code) {
+        rounds.remove(code);
+        battles.remove(code);
+    }
 }

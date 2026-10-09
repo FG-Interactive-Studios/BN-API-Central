@@ -9,7 +9,7 @@ import java.util.Objects;
  * Active game boards are not stored here.
  */
 public final class LobbyRoom {
-    public enum Phase { WAITING, PREPARING }
+    public enum Phase { WAITING, PREPARING, PLAYING, FINISHED }
 
     private final String code;
     private final long hostId;
@@ -80,6 +80,20 @@ public final class LobbyRoom {
             revision++;
         }
         return changed;
+    }
+
+    public void startBattle() {
+        if (phase != Phase.PREPARING || !isFull())
+            throw new IllegalStateException("Lobby must finish preparation first");
+        phase = Phase.PLAYING;
+        revision++;
+    }
+
+    public void finishBattle() {
+        if (phase != Phase.PLAYING)
+            throw new IllegalStateException("Lobby is not playing");
+        phase = Phase.FINISHED;
+        revision++;
     }
 
     /** A guest leaving reopens the same room and clears readiness. */
