@@ -2,6 +2,8 @@ package com.FGInteractive.BatalhaNaval.matchmaking.service;
 
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse;
 import com.FGInteractive.BatalhaNaval.match.service.MatchPreparationStore;
+import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
+import com.FGInteractive.BatalhaNaval.match.mode.GameModeRegistry;
 import java.util.function.Function;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse.LobbyPlayer;
 import com.FGInteractive.BatalhaNaval.matchmaking.model.LobbyRoom;
@@ -38,15 +40,21 @@ public class MatchmakingService {
     private final UserRepository users;
     private final RealtimeWebSocketHandler realtime;
     private final MatchPreparationStore preparations;
+    private final GameModeRegistry modes;
 
     public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime,
-                              MatchPreparationStore preparations) {
+                              MatchPreparationStore preparations, GameModeRegistry modes) {
         this.users = users;
         this.realtime = realtime;
         this.preparations = preparations;
+        this.modes = modes;
     }
 
-    public LobbyResponse create(long userId) {
+    public LobbyResponse create(long userId) { return create(userId, null); }
+
+    public LobbyResponse create(long userId, String modeId) {
+        // Unknown mode must fail before room allocation or member indexing.
+        GameModeDefinition mode = modes.get(modeId);
         LobbyRoom room;
         LobbyResponse view;
         synchronized (mutex) {
@@ -55,7 +63,7 @@ public class MatchmakingService {
                 throw problem(HttpStatus.SERVICE_UNAVAILABLE, "Lobby capacity reached");
             }
             String code = newCode();
-            room = new LobbyRoom(code, userId, realtime.isPlayerConnected(userId));
+            room = new LobbyRoom(code, userId, realtime.isPlayerConnected(userId), mode);
             view = view(room); // Check player existence before mutating the indexes.
             rooms.put(code, room);
             membership.put(userId, code);
@@ -112,7 +120,7 @@ public class MatchmakingService {
             }
             if (wasWaiting && room.phase() == LobbyRoom.Phase.PREPARING) {
                 // Initialize before other threads can submit a fleet.
-                preparations.start(room.code(), room.hostId(), room.guestId());
+                preparations.start(room.code(), room.hostId(), room.guestId(), room.mode());
             }
             view = view(room);
         }
@@ -206,7 +214,7 @@ public class MatchmakingService {
             players.add(player(room.guestId(), room.guestReady(), room.guestConnected()));
         }
         return new LobbyResponse(room.code(), room.phase().name(), room.revision(), 2,
-            List.copyOf(players));
+            List.copyOf(players), room.mode().summary());
     }
 
     private LobbyPlayer player(long userId, boolean ready, boolean connected) {
