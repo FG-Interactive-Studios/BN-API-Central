@@ -56,7 +56,7 @@ public class SessionService {
         String refreshToken = newRefreshToken();
         AuthSession session = sessionRepository.saveAndFlush(new AuthSession(
             locked.getUser(), hash(refreshToken), now, now.plus(SESSION_LIFETIME)));
-        return tokens(session, credential.getEmail(), refreshToken, now);
+        return tokens(session, locked.getEmail(), refreshToken, now);
     }
 
     @Transactional
