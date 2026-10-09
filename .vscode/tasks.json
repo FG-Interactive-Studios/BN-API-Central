@@ -29,7 +29,8 @@
           "DB_URL": "jdbc:postgresql://localhost:5432/battleship",
           "DB_USER": "postgres",
           "DB_PASSWORD": "postgres",
-          "PORT": "8080"
+          "PORT": "8080",
+          "SPRING_PROFILES_ACTIVE": "local"
         }
       },
       "problemMatcher": []
