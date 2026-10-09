@@ -169,7 +169,8 @@ class MatchPlacementPostgresIntegrationTests {
             assertEquals(0, ((Number)JsonPath.read(guest,"$.yourShips.length()")).intValue());
             assertEquals(true, JsonPath.read(guest,"$.opponentPlaced"));
             assertFalse(guest.contains("HORIZONTAL"));
-            assertFalse(guest.contains("CARRIER"));
+            // Ship identifiers are public mode metadata; only private positions are secret.
+            assertFalse(guest.contains("\"orientation\""));
 
             String auto=random(b);
             assertEquals(5, ((Number)JsonPath.read(auto,"$.yourShips.length()")).intValue());
