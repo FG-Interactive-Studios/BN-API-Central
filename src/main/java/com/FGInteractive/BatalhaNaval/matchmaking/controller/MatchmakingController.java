@@ -1,6 +1,7 @@
 package com.FGInteractive.BatalhaNaval.matchmaking.controller;
 
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.JoinLobbyRequest;
+import com.FGInteractive.BatalhaNaval.matchmaking.dto.CreateLobbyRequest;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.SetReadyRequest;
 import com.FGInteractive.BatalhaNaval.matchmaking.service.MatchmakingService;
@@ -21,8 +22,10 @@ public class MatchmakingController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public LobbyResponse create(@AuthenticationPrincipal Jwt jwt) {
-        return matchmaking.create(Long.parseLong(jwt.getSubject()));
+    public LobbyResponse create(@AuthenticationPrincipal Jwt jwt,
+                                @RequestBody(required = false) CreateLobbyRequest request) {
+        String modeId = request == null ? null : request.modeId();
+        return matchmaking.create(Long.parseLong(jwt.getSubject()), modeId);
     }
 
     @PostMapping("/join")

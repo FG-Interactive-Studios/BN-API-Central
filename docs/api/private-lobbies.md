@@ -34,6 +34,17 @@ Exemplo de resposta:
 
 Nenhuma resposta expõe e-mail, senha, sessão ou tabuleiro.
 
+## Modo de jogo
+
+Criar sala sem corpo permanece clássico. Para escolher outro modo,
+`POST /api/matchmaking/lobbies` aceita o corpo opcional
+`{"modeId":"quick"}` ou `{"modeId":"triangular"}`.
+O campo `mode` no snapshot da sala informa a configuração pública
+(geometria, frota e identificadores dos módulos). Um modo não pode
+ser alterado depois de criada a sala. Consultar `GET /api/game-modes`
+para exibir as opções disponíveis. Ver
+[modos de jogo](../architecture/composable-game-modes.md).
+
 ## Regras
 
 - Código aleatório de seis caracteres, sem 0/1/I/O; pode ser digitado em minúsculas.

@@ -1,6 +1,7 @@
 package com.FGInteractive.BatalhaNaval.matchmaking.model;
 
 import java.util.List;
+import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
 import java.util.Objects;
 
 /**
@@ -12,6 +13,7 @@ public final class LobbyRoom {
 
     private final String code;
     private final long hostId;
+    private final GameModeDefinition mode;
     private Long guestId;
     private boolean hostReady;
     private boolean guestReady;
@@ -20,14 +22,16 @@ public final class LobbyRoom {
     private Phase phase = Phase.WAITING;
     private long revision = 1;
 
-    public LobbyRoom(String code, long hostId, boolean hostConnected) {
+    public LobbyRoom(String code, long hostId, boolean hostConnected, GameModeDefinition mode) {
         this.code = code;
         this.hostId = hostId;
         this.hostConnected = hostConnected;
+        this.mode = java.util.Objects.requireNonNull(mode);
     }
 
     public String code() { return code; }
     public long hostId() { return hostId; }
+    public GameModeDefinition mode() { return mode; }
     public Long guestId() { return guestId; }
     public boolean hostReady() { return hostReady; }
     public boolean guestReady() { return guestReady; }
