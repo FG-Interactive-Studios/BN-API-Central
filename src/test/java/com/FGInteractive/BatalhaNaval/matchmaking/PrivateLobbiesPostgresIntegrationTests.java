@@ -247,7 +247,9 @@ class PrivateLobbiesPostgresIntegrationTests {
                 return mvc.perform(post("/api/matchmaking/lobbies/join")
                     .header("Authorization", "Bearer " + first.jwt)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\\"code\\":\\"" + code + "\\"}"))
+                    .content("""
+                        {"code":"%s"}
+                        """.formatted(code))
                     .andReturn().getResponse().getStatus();
             };
             java.util.concurrent.Callable<Integer> secondJoin = () -> {
@@ -255,7 +257,9 @@ class PrivateLobbiesPostgresIntegrationTests {
                 return mvc.perform(post("/api/matchmaking/lobbies/join")
                     .header("Authorization", "Bearer " + second.jwt)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\\"code\\":\\"" + code + "\\"}"))
+                    .content("""
+                        {"code":"%s"}
+                        """.formatted(code))
                     .andReturn().getResponse().getStatus();
             };
             var one = executor.submit(firstJoin);
