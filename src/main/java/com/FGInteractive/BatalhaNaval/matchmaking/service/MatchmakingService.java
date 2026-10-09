@@ -1,6 +1,8 @@
 package com.FGInteractive.BatalhaNaval.matchmaking.service;
 
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse;
+import com.FGInteractive.BatalhaNaval.match.service.MatchPreparationStore;
+import java.util.function.Function;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse.LobbyPlayer;
 import com.FGInteractive.BatalhaNaval.matchmaking.model.LobbyRoom;
 import com.FGInteractive.BatalhaNaval.shared.websocket.RealtimePresenceChangedEvent;
@@ -35,10 +37,13 @@ public class MatchmakingService {
     private final Map<Long, String> membership = new HashMap<>();
     private final UserRepository users;
     private final RealtimeWebSocketHandler realtime;
+    private final MatchPreparationStore preparations;
 
-    public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime) {
+    public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime,
+                              MatchPreparationStore preparations) {
         this.users = users;
         this.realtime = realtime;
+        this.preparations = preparations;
     }
 
     public LobbyResponse create(long userId) {
@@ -99,10 +104,15 @@ public class MatchmakingService {
         boolean changed;
         synchronized (mutex) {
             room = myRoom(userId);
+            boolean wasWaiting = room.phase() == LobbyRoom.Phase.WAITING;
             try {
                 changed = room.ready(userId, isReady);
             } catch (IllegalStateException ex) {
                 throw problem(HttpStatus.CONFLICT, "Lobby is already preparing");
+            }
+            if (wasWaiting && room.phase() == LobbyRoom.Phase.PREPARING) {
+                // Initialize before other threads can submit a fleet.
+                preparations.start(room.code(), room.hostId(), room.guestId());
             }
             view = view(room);
         }
@@ -120,6 +130,9 @@ public class MatchmakingService {
             room = rooms.get(code);
             membership.remove(userId);
             if (room == null) return;
+            // Guest departures also clear an in-progress board before host can
+            // ready-up with a different opponent.
+            preparations.remove(room.code());
             if (room.hostId() == userId) {
                 guestToNotify = room.guestId();
                 rooms.remove(code);
@@ -169,6 +182,20 @@ public class MatchmakingService {
         // discard late updates if two broadcasts race after unlocking.
         for (Long participant : participants) {
             realtime.sendToPlayer(participant, "LOBBY_UPDATED", view);
+        }
+    }
+
+    /**
+     * All game-preparation operations run under the same mutex as lobby
+     * membership changes and ready transitions. Prevents leave/rejoin races.
+     */
+    public <T> T withPreparingRoom(long userId, Function<LobbyRoom, T> action) {
+        synchronized (mutex) {
+            LobbyRoom room = myRoom(userId);
+            if (room.phase() != LobbyRoom.Phase.PREPARING || room.guestId() == null) {
+                throw problem(HttpStatus.CONFLICT, "Lobby is not preparing");
+            }
+            return action.apply(room);
         }
     }
 
