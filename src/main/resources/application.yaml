@@ -19,3 +19,8 @@ auth:
 
 server:
   port: ${PORT:8080}
+
+# Empty means same-origin WebSocket handshakes only.
+# For a frontend on another origin, set REALTIME_ALLOWED_ORIGINS explicitly.
+realtime:
+  allowed-origins: ${REALTIME_ALLOWED_ORIGINS:}
