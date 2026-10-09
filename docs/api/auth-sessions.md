@@ -55,15 +55,25 @@ game data and actions must be enforced server-side on future endpoints.
 
 ## Required configuration
 
-Set `AUTH_JWT_SECRET_B64` to a secret generated from at least **32 random bytes**
-of Base64, e.g. `openssl rand -base64 48`, for **every runtime environment**.
-No development signing key is baked into production configuration. Missing,
-malformed, or short keys prevent startup. The fixed signing key in test/CI
-profiles is **only** for automated tests and must never be used in production.
+**Local development:** the VS Code `BN API - Local DB (Debug)` launch explicitly
+uses `SPRING_PROFILES_ACTIVE=local`. When `AUTH_JWT_SECRET_B64` is blank,
+the backend generates a fresh cryptographically random 48-byte HS256 key
+**once per application startup**, held in memory only. JWTs issued before
+a restart will no longer validate. A deliberately configured signing key
+takes precedence and must pass the same Base64 and length validation.
+For local terminal runs, activate the profile explicitly:
+`./mvnw spring-boot:run -Dspring-boot.run.profiles=local`.
 
-The VS Code local debug launch reads the untracked `.env` file; copy
-`.env.example` and fill the signing key before running. For terminal usage,
-export the environment variable in the shell. Use HTTPS in production.
+**Production/default profile:** provide a persistent, secret
+`AUTH_JWT_SECRET_B64` containing at least 32 random bytes encoded in Base64,
+for example from `openssl rand -base64 48`. Without a valid key startup fails
+closed. Never activate the `local` profile on production infrastructure. All
+production API instances must use the same securely managed key until a
+coordinated rotation. Do not commit the value or print it to logs.
+
+**CI/test profiles:** continue to use their explicit test-only signing key.
+They do not fall back to automatic local key generation. Use HTTPS in
+production.
 Do not log tokens, commit secrets, or put refresh tokens into localStorage.
 Prefer memory-backed client session storage; avoid leaking tokens to telemetry,
 third-party scripts, or URLs.

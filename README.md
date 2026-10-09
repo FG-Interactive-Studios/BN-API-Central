@@ -113,12 +113,22 @@ Endpoints autenticados: `GET /api/users/me`, `GET /api/auth/sessions`,
 `DELETE /api/auth/sessions/{sessionId}`. As demais rotas também exigem
 `Authorization: Bearer <accessToken>`.
 
-**Antes de iniciar a aplicação**, configure a variável obrigatória
-`AUTH_JWT_SECRET_B64` com uma chave aleatória em Base64 de 32 bytes ou mais.
-Um modo de gerar a chave é `openssl rand -base64 48`. Não faça commit da
-chave. O VS Code local carrega variáveis do arquivo `.env` não versionado;
-ao rodar pelo terminal, exporte as variáveis desse arquivo no ambiente
-do processo, pois o Maven não lê `.env` automaticamente.
+**Desenvolvimento local:** o launch `BN API - Local DB (Debug)` ativa
+`SPRING_PROFILES_ACTIVE=local` e gera automaticamente uma chave JWT aleatória
+em memória quando `AUTH_JWT_SECRET_B64` não está configurada. Não é preciso
+criar um arquivo `.env` apenas para isso. A chave muda a cada reinicialização,
+invalidando tokens de acesso anteriores (o jogador deverá autenticar novamente).
+
+**Produção:** `AUTH_JWT_SECRET_B64` continua **obrigatória**. Gere uma chave
+aleatória de pelo menos 32 bytes em Base64 (por exemplo,
+`openssl rand -base64 48`) e configure-a de forma persistente no ambiente.
+Sem ela a API não inicia. Nunca use o perfil `local` em produção e não
+versione segredos. Se uma chave explícita estiver configurada no perfil
+`local`, ela também será validada e utilizada.
+
+**Terminal:** inicie com o perfil `local` explicitamente; sem perfil ativo,
+a API assume a política segura de produção. O Maven não carrega arquivos
+`.env` automaticamente.
 
 Os tokens contêm somente a identidade e informações mínimas para exibição.
 O cliente nunca escolhe o ID do usuário autenticado: use `GET /api/users/me`
@@ -167,7 +177,7 @@ Ele executa automaticamente a task `BN API: Verificar Docker Local`, que:
 docker compose up -d
 ```
 
-2. Configure as variáveis de ambiente:
+2. Opcionalmente, prepare um arquivo `.env` para consulta local (o Maven não o lê automaticamente):
 
 ```bash
 cp .env.example .env
@@ -189,13 +199,13 @@ PORT=8080
 Linux/macOS:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Windows:
 
 ```powershell
-.\mvnw.cmd spring-boot:run
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 ## Configuração do banco local

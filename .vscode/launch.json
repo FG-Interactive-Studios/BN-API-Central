@@ -13,15 +13,15 @@
         "DB_URL": "jdbc:postgresql://localhost:5432/battleship",
         "DB_USER": "postgres",
         "DB_PASSWORD": "postgres",
-        "PORT": "8080"
+        "PORT": "8080",
+        "SPRING_PROFILES_ACTIVE": "local"
       },
       "presentation": {
         "reveal": "always",
         "panel": "dedicated",
         "clear": true
       },
-      "console": "integratedTerminal",
-      "envFile": "${workspaceFolder}/.env"
+      "console": "integratedTerminal"
     },
     {
       "name": "BN API - Production DB (Debug)",
@@ -34,7 +34,8 @@
         "DB_URL": "jdbc:postgresql://prod-db.example.com:5432/battleship",
         "DB_USER": "bn_app",
         "DB_PASSWORD": "change-me",
-        "PORT": "8080"
+        "PORT": "8080",
+        "SPRING_PROFILES_ACTIVE": "prod"
       },
       "console": "integratedTerminal"
     }
