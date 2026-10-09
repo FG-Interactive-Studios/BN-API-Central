@@ -13,9 +13,22 @@ O backend mantém **dois tabuleiros secretos separados** por preparação.
 O adversário pode consultar **somente indicadores** de posicionamento e
 confirmação, jamais os navios ou suas coordenadas.
 
+## Seleção e composição do modo
+
+O modo é fixado no momento em que o anfitrião cria a sala:
+`POST /api/matchmaking/lobbies` com corpo opcional
+`{"modeId":"classic"}`, `{"modeId":"quick"}` ou
+`{"modeId":"triangular"}`. O padrão é `classic`.
+`GET /api/game-modes` lista as definições públicas disponíveis.
+Veja [arquitetura e catálogo](../architecture/composable-game-modes.md).
+
+A frota e as células válidas variam conforme o modo; o cliente deve usar
+`mode.geometry.cells` e `mode.fleet` retornados pela API, não
+suposições sobre tabuleiro 10×10 ou cinco embarcações.
+
 ## Frota e coordenadas
 
-Tabuleiro 10×10. Índices de linha e coluna de **0 a 9**.
+No **modo clássico**, tabuleiro 10×10. Índices de linha e coluna de **0 a 9**.
 Coordenadas iniciais são a ponta superior/esquerda de cada navio.
 Orientações válidas: `HORIZONTAL`, `VERTICAL`.
 
@@ -27,7 +40,8 @@ Orientações válidas: `HORIZONTAL`, `VERTICAL`.
 | `SUBMARINE` | 3 |
 | `DESTROYER` | 2 |
 
-É obrigatório posicionar **uma embarcação de cada tipo** (17 células).
+**No clássico**, é obrigatório posicionar uma embarcação de cada tipo (17 células).
+Nos demais modos, a frota válida é definida por `mode.fleet`.
 Não pode ultrapassar os limites do tabuleiro nem sobrepor outro navio.
 **Adjacência é permitida.**
 

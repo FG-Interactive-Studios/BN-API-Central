@@ -168,8 +168,9 @@ JWT é obrigatória em produção; nenhum segredo real é versionado.
 
 A sala privada entra em `PREPARING` quando os dois jogadores marcam
 prontidão. No novo domínio `match`, cada um posiciona sua própria frota
-clássica de 5 navios num tabuleiro 10×10, manualmente ou com geração
-aleatória. A confirmação bloqueia edições; o outro jogador recebe apenas
+definida pelo modo da sala: Clássico 10×10, Rápido 8×8 ou Triangular,
+com frota variável, posicionamento manual ou geração aleatória.
+A confirmação bloqueia edições; o outro jogador recebe apenas
 indicadores de posicionamento/prontidão, jamais coordenadas secretas.
 
 O cliente não envia o próprio `userId` nem o código de uma sala para
@@ -178,6 +179,10 @@ A conexão WebSocket publica `PREPARATION_UPDATED` com snapshots privados
 e a consulta REST restaura o estado após reconexão.
 
 Contrato completo: [Preparação de frotas](docs/api/fleet-preparation.md).
+A [arquitetura de modos de jogo](docs/architecture/composable-game-modes.md)
+permite combinar geometria, frota e regras de posicionamento, preparando
+extensões futuras para tiro, movimento, poderes e debuffs. Estas últimas
+mecânicas ainda **não são executadas** no MVP de posicionamento.
 
 ## Princípio server-authoritative
 
