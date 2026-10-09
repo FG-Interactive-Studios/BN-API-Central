@@ -1,5 +1,6 @@
 package com.FGInteractive.BatalhaNaval.match.dto;
 
+import com.FGInteractive.BatalhaNaval.match.mode.ModeSummary;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,5 +14,6 @@ public record PreparationResponse(
     boolean opponentPlaced,
     boolean opponentConfirmed,
     boolean bothConfirmed,
-    List<PlaceFleetRequest.ShipPlacement> yourShips
+    List<PlaceFleetRequest.ShipPlacement> yourShips,
+    ModeSummary mode
 ) {}

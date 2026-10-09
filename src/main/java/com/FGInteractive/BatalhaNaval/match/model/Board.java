@@ -1,16 +1,12 @@
 package com.FGInteractive.BatalhaNaval.match.model;
 
 import com.FGInteractive.BatalhaNaval.match.dto.PlaceFleetRequest.ShipPlacement;
+import com.FGInteractive.BatalhaNaval.match.mode.*;
 import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
-/** Immutable, authoritative private placement. No JPA or game-session persistence. */
+/** Immutable private placement validated against a fixed mode definition. */
 public final class Board {
-    public static final int SIZE = 10;
     private static final SecureRandom RANDOM = new SecureRandom();
     private final List<ShipPlacement> ships;
     private final Set<Cell> occupied;
@@ -19,73 +15,80 @@ public final class Board {
         this.ships = List.copyOf(ships);
         this.occupied = Set.copyOf(occupied);
     }
-
     public List<ShipPlacement> ships() { return ships; }
     public Set<Cell> occupied() { return occupied; }
 
+    /** Convenience for classic-mode legacy callers and simple unit tests. */
     public static Board from(List<ShipPlacement> placements) {
-        if (placements == null || placements.size() != ShipType.values().length) {
-            throw new IllegalArgumentException("Exactly five ships are required");
+        return from(GameModePresets.classic(), placements);
+    }
+
+    public static Board from(GameModeDefinition mode, List<ShipPlacement> placements) {
+        Objects.requireNonNull(mode, "mode");
+        if (placements == null || placements.size() != mode.fleet().ships().size()) {
+            throw new IllegalArgumentException("Wrong number of ships for mode " + mode.id());
         }
-        EnumSet<ShipType> types = EnumSet.noneOf(ShipType.class);
+        Set<String> types = new HashSet<>();
         Set<Cell> cells = new HashSet<>();
         for (ShipPlacement ship : placements) {
-            if (ship == null || ship.type() == null || ship.orientation() == null
-                || ship.row() == null || ship.col() == null) {
-                throw new IllegalArgumentException("Ship type and orientation are required");
+            if (ship == null || ship.type() == null) {
+                throw new IllegalArgumentException("Ship type is required");
             }
             if (!types.add(ship.type())) {
                 throw new IllegalArgumentException("Each ship type must appear exactly once");
             }
-            int size = ship.type().length();
-            if (ship.row() < 0 || ship.col() < 0
-                || ship.row() >= SIZE || ship.col() >= SIZE
-                || (ship.orientation() == Orientation.HORIZONTAL && ship.col() > SIZE - size)
-                || (ship.orientation() == Orientation.VERTICAL && ship.row() > SIZE - size)) {
-                throw new IllegalArgumentException("Ship is outside the 10x10 board");
-            }
-            for (int i = 0; i < size; i++) {
-                Cell cell = new Cell(
-                    ship.row() + (ship.orientation() == Orientation.VERTICAL ? i : 0),
-                    ship.col() + (ship.orientation() == Orientation.HORIZONTAL ? i : 0));
-                if (!cells.add(cell)) {
-                    throw new IllegalArgumentException("Ships cannot overlap");
-                }
-            }
+            ShipDefinition definition = mode.fleet().require(ship.type());
+            List<Cell> footprint = mode.placement().footprint(ship, definition, mode.geometry());
+            mode.placement().validateAgainstExisting(footprint, cells);
+            cells.addAll(footprint);
         }
-        // Stable ordering, independent from input order.
         List<ShipPlacement> ordered = new ArrayList<>(placements);
-        ordered.sort(java.util.Comparator.comparing(ShipPlacement::type));
+        ordered.sort(Comparator.comparing(ShipPlacement::type));
         return new Board(ordered, cells);
     }
 
     public static Board random() {
-        List<ShipPlacement> result = new ArrayList<>(ShipType.values().length);
-        Set<Cell> cells = new HashSet<>();
-        for (ShipType type : ShipType.values()) {
-            boolean placed = false;
-            for (int attempt = 0; attempt < 1000; attempt++) {
-                Orientation orientation = RANDOM.nextBoolean()
-                    ? Orientation.HORIZONTAL : Orientation.VERTICAL;
-                int row = RANDOM.nextInt(SIZE);
-                int col = RANDOM.nextInt(SIZE);
-                int lastRow = row + (orientation == Orientation.VERTICAL ? type.length() - 1 : 0);
-                int lastCol = col + (orientation == Orientation.HORIZONTAL ? type.length() - 1 : 0);
-                if (lastRow >= SIZE || lastCol >= SIZE) continue;
-                List<Cell> candidate = new ArrayList<>(type.length());
-                for (int i = 0; i < type.length(); i++) {
-                    candidate.add(new Cell(row + (orientation == Orientation.VERTICAL ? i : 0),
-                        col + (orientation == Orientation.HORIZONTAL ? i : 0)));
+        return random(GameModePresets.classic());
+    }
+
+    public static Board random(GameModeDefinition mode) {
+        Objects.requireNonNull(mode, "mode");
+        List<Cell> available = mode.geometry().cells();
+        List<ShipDefinition> fleet = new ArrayList<>(mode.fleet().ships());
+        fleet.sort(Comparator.comparingInt(ShipDefinition::length).reversed());
+        for (int restart = 0; restart < 30; restart++) {
+            List<ShipPlacement> placements = new ArrayList<>();
+            Set<Cell> occupied = new HashSet<>();
+            boolean complete = true;
+            for (ShipDefinition ship : fleet) {
+                List<Cell> candidateOrigins = new ArrayList<>(available);
+                Collections.shuffle(candidateOrigins, RANDOM);
+                boolean found = false;
+                for (Cell start : candidateOrigins) {
+                    List<Orientation> orientations = new ArrayList<>(List.of(Orientation.values()));
+                    Collections.shuffle(orientations, RANDOM);
+                    for (Orientation orientation : orientations) {
+                        ShipPlacement placement = new ShipPlacement(
+                            ship.id(), start.row(), start.col(), orientation);
+                        List<Cell> cells;
+                        try { cells = mode.placement().footprint(placement, ship, mode.geometry()); }
+                        catch (IllegalArgumentException ex) { continue; }
+                        if (cells.stream().anyMatch(occupied::contains)) continue;
+                        placements.add(placement);
+                        occupied.addAll(cells);
+                        found = true;
+                        break;
+                    }
+                    if (found) break;
                 }
-                if (candidate.stream().anyMatch(cells::contains)) continue;
-                cells.addAll(candidate);
-                result.add(new ShipPlacement(type, row, col, orientation));
-                placed = true;
-                break;
+                if (!found) {
+                    complete = false;
+                    break;
+                }
             }
-            if (!placed) throw new IllegalStateException("Could not generate a valid random fleet");
+            if (complete) return from(mode, placements);
         }
-        return from(result);
+        throw new IllegalStateException("Mode has no feasible random fleet placement");
     }
 
     public record Cell(int row, int col) {}

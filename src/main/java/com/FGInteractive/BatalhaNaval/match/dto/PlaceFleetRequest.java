@@ -1,10 +1,9 @@
 package com.FGInteractive.BatalhaNaval.match.dto;
 
 import com.FGInteractive.BatalhaNaval.match.model.Orientation;
-import com.FGInteractive.BatalhaNaval.match.model.ShipType;
 import java.util.List;
 
-/** Replaces the entire private fleet atomically. Rows and columns are 0-based. */
+/** Ship ids are defined by the selected game mode, not by an enum. */
 public record PlaceFleetRequest(List<ShipPlacement> ships) {
-    public record ShipPlacement(ShipType type, Integer row, Integer col, Orientation orientation) {}
+    public record ShipPlacement(String type, Integer row, Integer col, Orientation orientation) {}
 }

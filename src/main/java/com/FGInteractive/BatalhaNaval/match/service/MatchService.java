@@ -32,18 +32,19 @@ public class MatchService {
 
     public PreparationResponse place(long player, PlaceFleetRequest request) {
         if (request == null) throw problem(HttpStatus.BAD_REQUEST, "Fleet is required");
-        Board board;
-        try {
-            board = Board.from(request.ships());
-        } catch (IllegalArgumentException ex) {
-            throw problem(HttpStatus.BAD_REQUEST, ex.getMessage());
-        }
-        return modify(player, round -> round.place(player, board));
+        return modify(player, round -> {
+            Board board;
+            try {
+                board = Board.from(round.mode(), request.ships());
+            } catch (IllegalArgumentException ex) {
+                throw problem(HttpStatus.BAD_REQUEST, ex.getMessage());
+            }
+            round.place(player, board);
+        });
     }
 
     public PreparationResponse random(long player) {
-        Board board = Board.random();
-        return modify(player, round -> round.place(player, board));
+        return modify(player, round -> round.place(player, Board.random(round.mode())));
     }
 
     public PreparationResponse confirm(long player) {
