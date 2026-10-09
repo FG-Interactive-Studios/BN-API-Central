@@ -181,8 +181,26 @@ e a consulta REST restaura o estado após reconexão.
 Contrato completo: [Preparação de frotas](docs/api/fleet-preparation.md).
 A [arquitetura de modos de jogo](docs/architecture/composable-game-modes.md)
 permite combinar geometria, frota e regras de posicionamento, preparando
-extensões futuras para tiro, movimento, poderes e debuffs. Estas últimas
-mecânicas ainda **não são executadas** no MVP de posicionamento.
+extensões futuras para tiro, movimento, poderes e debuffs. O motor de
+batalha já executa ataque, alternância de turnos e vitória; **movimento,
+poderes e debuffs ainda não**.
+
+## Motor de batalha
+
+Após confirmação das duas frotas, a sala passa automaticamente para
+`PLAYING`. `GET /api/matches/me` recupera o estado atual e
+`POST /api/matches/me/shots` recebe somente `{"row":0,"col":0}`
+com JWT. O servidor calcula acerto/erro, navio afundado, próximo turno e
+vitória. `BATTLE_UPDATED` publica snapshots privados por jogador, com
+`yourShips` limitado à própria frota. Ao vencer, a sala passa para
+`FINISHED`.
+
+As mecânicas `ATTACK`, `TURN` e `VICTORY` agora são estratégias Java
+**executáveis e intercambiáveis**, em todos os modos registrados.
+`MOVEMENT` e `ABILITY` seguem como contratos futuros (sem poderes
+ativos nem navios móveis). Não existe timeout de turno nesta V1.
+
+Contrato: [Motor de batalha](docs/api/battle-engine.md).
 
 ## Princípio server-authoritative
 

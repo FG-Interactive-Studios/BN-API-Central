@@ -107,9 +107,10 @@ tabuleiro estiver vazio, retorna `[]`. O frontend pode desenhar as
 células ocupadas a partir das posições dos cinco navios. A API preserva
 o estado autoritativo para a futura etapa de tiros.
 
-O campo `bothConfirmed` muda para `true` quando ambos confirmam. Isso
-**não inicia automaticamente os tiros nesta PR**. A próxima PR de motor de
-partida consumirá este estado e implementará começo, turnos e disparos.
+O campo `bothConfirmed` muda para `true` quando ambos confirmam.
+O backend inicia automaticamente a batalha e muda a sala para `PLAYING`.
+Consulte [Motor de batalha](battle-engine.md) para obter o snapshot
+autorizado e disparar usando apenas `row` e `col`.
 
 `revision` aumenta em cada alteração de frota ou primeira confirmação.
 `preparationId` identifica a rodada: uma saída/reentrada reinicia as
@@ -144,5 +145,5 @@ painel. A interface não deve mostrar os navios do oponente durante a partida.
 
 Todas as frotas e salas estão em **memória de uma única instância**. Um
 reinício perde o progresso dessas partidas. Nenhuma migration ou dependência
-foi adicionada. Não implementa disparos, dano, vitória nem persistência de
-histórico de batalha; serão tratados na PR 4.
+foi adicionada. O motor de batalha possui disparos, afundamentos e vitória em memória,
+mas não persiste histórico após abandonar a sala.

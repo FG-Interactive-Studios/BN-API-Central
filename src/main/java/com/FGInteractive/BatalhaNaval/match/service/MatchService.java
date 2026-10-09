@@ -3,6 +3,8 @@ package com.FGInteractive.BatalhaNaval.match.service;
 import com.FGInteractive.BatalhaNaval.match.dto.PlaceFleetRequest;
 import com.FGInteractive.BatalhaNaval.match.dto.PreparationResponse;
 import com.FGInteractive.BatalhaNaval.match.model.Board;
+import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
+import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
 import com.FGInteractive.BatalhaNaval.match.model.PreparationRound;
 import com.FGInteractive.BatalhaNaval.matchmaking.model.LobbyRoom;
 import com.FGInteractive.BatalhaNaval.matchmaking.service.MatchmakingService;
@@ -26,7 +28,7 @@ public class MatchService {
     }
 
     public PreparationResponse mine(long player) {
-        return matchmaking.withPreparingRoom(player, room ->
+        return matchmaking.withActiveRoom(player, room ->
             preparations.get(room.code()).view(player));
     }
 
@@ -48,7 +50,39 @@ public class MatchService {
     }
 
     public PreparationResponse confirm(long player) {
-        return modify(player, round -> round.confirm(player));
+        Confirmation transition = matchmaking.withActiveRoom(player, room -> {
+            PreparationRound round = preparations.get(room.code());
+            try {
+                round.confirm(player); // Replayed confirmation is idempotent after PLAYING.
+            } catch (IllegalStateException ex) {
+                throw problem(HttpStatus.CONFLICT, ex.getMessage());
+            }
+            BattleResponse hostGame = null;
+            BattleResponse guestGame = null;
+            boolean started = false;
+            if (room.phase() == LobbyRoom.Phase.PREPARING && round.bothConfirmed()) {
+                BattleRound battle = new BattleRound(room.code(), round.mode(),
+                    room.hostId(), room.guestId(),
+                    round.confirmedBoard(room.hostId()),
+                    round.confirmedBoard(room.guestId()));
+                preparations.startBattle(room.code(), battle);
+                room.startBattle();
+                hostGame = battle.view(room.hostId());
+                guestGame = battle.view(room.guestId());
+                started = true;
+            }
+            return new Confirmation(room.hostId(), room.guestId(), round.view(player),
+                round.view(room.hostId()), round.view(room.guestId()),
+                hostGame, guestGame, started);
+        });
+        realtime.sendToPlayer(transition.hostId(), "PREPARATION_UPDATED", transition.host());
+        realtime.sendToPlayer(transition.guestId(), "PREPARATION_UPDATED", transition.guest());
+        if (transition.started()) {
+            matchmaking.publishRoomFor(player);
+            realtime.sendToPlayer(transition.hostId(), "BATTLE_UPDATED", transition.hostGame());
+            realtime.sendToPlayer(transition.guestId(), "BATTLE_UPDATED", transition.guestGame());
+        }
+        return transition.self();
     }
 
     private PreparationResponse modify(long player, Consumer<PreparationRound> action) {
@@ -75,4 +109,7 @@ public class MatchService {
     private record Changes(long player, long hostId, long guestId,
                            PreparationResponse self, PreparationResponse host,
                            PreparationResponse guest) {}
+    private record Confirmation(long hostId, long guestId,
+        PreparationResponse self, PreparationResponse host, PreparationResponse guest,
+        BattleResponse hostGame, BattleResponse guestGame, boolean started) {}
 }

@@ -13,12 +13,12 @@ não por flags ou regras fornecidas pelo navegador. Cada definição possui:
 - `RuleModule` por `RuleSlot`: contratos/identificadores de módulos
   de `MOVEMENT`, `ATTACK`, `TURN`, `VICTORY` e `ABILITY`.
 
-**Atenção:** `PlacementRule` é uma estratégia aplicada **agora**. Os
-módulos das outras categorias são **contratos declarativos e verificações de
-compatibilidade**, não executam movimentos, tiros, poderes ou debuffs. A
-PR seguinte (motor da partida) adicionará interfaces executáveis para
-ações e regras de combate de forma incremental. Nenhum modo existente
-concede poderes por declarar um ID em `ABILITY`.
+**Execução real:** `PlacementRule`, `AttackRule`, `TurnRule` e
+`VictoryRule` agora possuem interfaces e implementações executáveis.
+O construtor de `GameModeDefinition` rejeita módulos declarativos nos
+slots de combate, para não aceitar modos incapazes de executar tiros.
+`MOVEMENT` e `ABILITY` continuam apenas contratos declarativos:
+**não há navios móveis, habilidades, buffs ou debuffs funcionais**.
 
 ## Modos registrados
 
@@ -33,7 +33,8 @@ triangular**, e não ladrilhos triangulares. Um tabuleiro de ladrilhos
 triangulares pode ter uma implementação distinta de `BoardGeometry`
 quando suas regras de vizinhança forem definidas.
 
-Os três modos compartilham, por enquanto, os mesmos módulos declarativos:
+Os três modos compartilham as mesmas políticas de combate executáveis
+(e ainda declaram a ausência de movimento e poderes):
 `MOVEMENT=stationary`, `ATTACK=standard-shot`,
 `TURN=alternating`, `VICTORY=all-ships-sunk`,
 `ABILITY=disabled`.
@@ -116,11 +117,12 @@ natural será declarar essas características em uma definição por embarcaçã
 e aplicar efeitos por estratégias explícitas, com regras de compatibilidade
 entre habilidades, turnos e geometrias.
 
-Essa **execução ainda não existe** nesta PR. Não existem poderes ativos,
-navios móveis, efeitos de batalha ou regras de vitória funcionais aqui.
-O sistema mantém apenas o posicionamento real e os contratos declarativos
-para que a implementação da batalha não precise voltar a fixar tamanhos,
-tipos de navio e formato do mapa.
+A execução de ataque, alternância de turnos e condição de vitória já
+existe, com visão de partida e eventos privados por jogador:
+[Motor de batalha](../api/battle-engine.md). Poderes ativos, debuffs,
+movimentos e efeitos especiais **ainda não existem**. Serão acrescentados
+como estratégias com semântica de ação, não como strings arbitrárias
+fornecidas pelo cliente.
 
 ## Escopo operacional
 

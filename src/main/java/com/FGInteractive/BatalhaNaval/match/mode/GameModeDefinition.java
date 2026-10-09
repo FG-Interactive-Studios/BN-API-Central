@@ -22,6 +22,12 @@ public record GameModeDefinition(
             if (rule == null || rule.slot() != slot)
                 throw new IllegalArgumentException("Missing or mismatched rule slot: "+slot);
         }
+        // Combat-capable modes must compose executable strategies, not mere
+        // names. Reject invalid modules as soon as a mode is constructed.
+        if (!(rules.get(RuleSlot.ATTACK) instanceof AttackRule)
+            || !(rules.get(RuleSlot.TURN) instanceof TurnRule)
+            || !(rules.get(RuleSlot.VICTORY) instanceof VictoryRule))
+            throw new IllegalArgumentException("Combat mode needs executable attack, turn and victory rules");
         if (fleet.occupiedCells() > geometry.cells().size())
             throw new IllegalArgumentException("Fleet exceeds playable board capacity");
     }
