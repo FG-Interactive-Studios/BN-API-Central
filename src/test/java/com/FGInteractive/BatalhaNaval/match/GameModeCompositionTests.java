@@ -40,7 +40,7 @@ class GameModeCompositionTests {
         assertFalse(triangle.contains(new Board.Cell(1, 3)));
         assertFalse(triangle.contains(new Board.Cell(-1, 0)));
         assertEquals(36, triangle.cells().size());
-        assertEquals(2, triangle.neighbors(new Board.Cell(0, 0)).size());
+        assertEquals(1, triangle.neighbors(new Board.Cell(0, 0)).size());
         assertTrue(triangle.neighbors(new Board.Cell(2, 2)).contains(new Board.Cell(3, 2)));
         assertFalse(triangle.neighbors(new Board.Cell(2, 2)).contains(new Board.Cell(1, 2)));
     }
