@@ -12,6 +12,8 @@ on:
 jobs:
   test:
     name: Test and Build
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
 
     services:
@@ -56,8 +58,16 @@ jobs:
       - name: Make Maven Wrapper executable
         run: chmod +x mvnw
 
-      - name: Verify
-        run: ./mvnw -B verify
+      - name: PR validation - compile, unit tests, PostgreSQL integration and package
+        run: ./mvnw -B --no-transfer-progress clean verify
+
+      - name: Publish test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-test-reports
+          path: target/surefire-reports/
+          if-no-files-found: ignore
 
   docker:
     name: Publish Docker Image
