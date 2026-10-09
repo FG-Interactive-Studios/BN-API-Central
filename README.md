@@ -164,6 +164,21 @@ como base, preencha os valores reais **fora do Git** e siga as
 [instruções de implantação](docs/deployment/environment.md). A chave
 JWT é obrigatória em produção; nenhum segredo real é versionado.
 
+## Preparação da partida
+
+A sala privada entra em `PREPARING` quando os dois jogadores marcam
+prontidão. No novo domínio `match`, cada um posiciona sua própria frota
+clássica de 5 navios num tabuleiro 10×10, manualmente ou com geração
+aleatória. A confirmação bloqueia edições; o outro jogador recebe apenas
+indicadores de posicionamento/prontidão, jamais coordenadas secretas.
+
+O cliente não envia o próprio `userId` nem o código de uma sala para
+manipular seus navios: a API usa somente o JWT e a sala do jogador.
+A conexão WebSocket publica `PREPARATION_UPDATED` com snapshots privados
+e a consulta REST restaura o estado após reconexão.
+
+Contrato completo: [Preparação de frotas](docs/api/fleet-preparation.md).
+
 ## Princípio server-authoritative
 
 O cliente **não decide**:
