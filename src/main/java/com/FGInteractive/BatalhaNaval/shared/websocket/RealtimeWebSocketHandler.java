@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -24,12 +25,15 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler implements Su
     private static final CloseStatus SESSION_REVOKED = new CloseStatus(1008, "Session inactive");
     private final AuthSessionRepository sessions;
     private final JsonMapper mapper;
+    private final ApplicationEventPublisher events;
     private final ConcurrentHashMap<Long, ConcurrentHashMap<String, Connection>> connections =
         new ConcurrentHashMap<>();
 
-    public RealtimeWebSocketHandler(AuthSessionRepository sessions, JsonMapper mapper) {
+    public RealtimeWebSocketHandler(AuthSessionRepository sessions, JsonMapper mapper,
+                                     ApplicationEventPublisher events) {
         this.sessions = sessions;
         this.mapper = mapper;
+        this.events = events;
     }
 
     @Override
@@ -50,6 +54,7 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler implements Su
         connections.computeIfAbsent(identity.userId(), ignored -> new ConcurrentHashMap<>())
             .put(session.getId(), connection);
         deliver(connection, "CONNECTED", Map.of());
+        events.publishEvent(new RealtimePresenceChangedEvent(identity.userId()));
     }
 
     @Override
@@ -102,6 +107,13 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler implements Su
         }
     }
 
+    /** At least one open socket belonging to the active authenticated session. */
+    public boolean isPlayerConnected(long userId) {
+        Map<String, Connection> playerConnections = connections.get(userId);
+        return playerConnections != null && playerConnections.values().stream()
+            .anyMatch(connection -> connection.socket().isOpen() && active(connection.identity()));
+    }
+
     @Scheduled(fixedDelay = 15000)
     public void closeRevokedSessions() {
         for (Map<String, Connection> playerConnections : connections.values()) {
@@ -152,10 +164,16 @@ public class RealtimeWebSocketHandler extends TextWebSocketHandler implements Su
 
     private void unregister(Connection connection) {
         long userId = connection.identity().userId();
+        java.util.concurrent.atomic.AtomicBoolean removed = new java.util.concurrent.atomic.AtomicBoolean();
         connections.computeIfPresent(userId, (id, sockets) -> {
-            sockets.remove(connection.socket().getId(), connection);
+            if (sockets.remove(connection.socket().getId(), connection)) {
+                removed.set(true);
+            }
             return sockets.isEmpty() ? null : sockets;
         });
+        if (removed.get()) {
+            events.publishEvent(new RealtimePresenceChangedEvent(userId));
+        }
     }
 
     @Override
