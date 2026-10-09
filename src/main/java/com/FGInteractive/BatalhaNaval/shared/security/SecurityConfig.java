@@ -25,7 +25,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                 // Only numeric public-profile paths are anonymous; "/api/users/me" stays protected.
                 .requestMatchers(request -> "GET".equals(request.getMethod())
-                    && request.getServletPath().matches("/api/users/[0-9]+")).permitAll()
+                    && request.getRequestURI().substring(request.getContextPath().length())
+                        .matches("/api/users/[0-9]+")).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login",
                     "/api/auth/refresh").permitAll()
                 .anyRequest().authenticated())
