@@ -1,20 +1,21 @@
 spring:
   application:
     name: BatalhaNaval
-
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/battleship}
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
-
   jpa:
     hibernate:
       ddl-auto: none
     open-in-view: false
-
   flyway:
     enabled: true
     baseline-on-migrate: true
+
+auth:
+  jwt:
+    secret-base64: ${AUTH_JWT_SECRET_B64:}
 
 server:
   port: ${PORT:8080}

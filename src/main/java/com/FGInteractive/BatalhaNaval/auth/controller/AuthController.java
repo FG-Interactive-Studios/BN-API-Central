@@ -1,20 +1,63 @@
 package com.FGInteractive.BatalhaNaval.auth.controller;
 
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import com.FGInteractive.BatalhaNaval.auth.dto.*;
 import com.FGInteractive.BatalhaNaval.auth.service.AuthService;
+import com.FGInteractive.BatalhaNaval.auth.service.SessionService;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-    private final AuthService service;
-    public AuthController(AuthService service) { this.service = service; }
+    private final AuthService registration;
+    private final SessionService sessions;
+
+    public AuthController(AuthService registration, SessionService sessions) {
+        this.registration = registration;
+        this.sessions = sessions;
+    }
+
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.register(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(registration.register(request));
+    }
+
+    @PostMapping("/login")
+    public TokenResponse login(@Valid @RequestBody LoginRequest request) {
+        return sessions.login(request);
+    }
+
+    @PostMapping("/refresh")
+    public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
+        return sessions.refresh(request);
+    }
+
+    @PostMapping("/logout")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logout(@AuthenticationPrincipal Jwt jwt) {
+        sessions.logout(Long.parseLong(jwt.getSubject()), UUID.fromString(jwt.getClaimAsString("sid")));
+    }
+
+    @PostMapping("/logout-all")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void logoutAll(@AuthenticationPrincipal Jwt jwt) {
+        sessions.logoutAll(Long.parseLong(jwt.getSubject()));
+    }
+
+    @GetMapping("/sessions")
+    public List<SessionResponse> sessions(@AuthenticationPrincipal Jwt jwt) {
+        return sessions.activeSessions(Long.parseLong(jwt.getSubject()),
+            UUID.fromString(jwt.getClaimAsString("sid")));
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void revoke(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID sessionId) {
+        sessions.revoke(Long.parseLong(jwt.getSubject()), sessionId);
     }
 }

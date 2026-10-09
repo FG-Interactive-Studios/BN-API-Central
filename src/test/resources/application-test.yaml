@@ -4,18 +4,14 @@ spring:
     username: sa
     password:
     driver-class-name: org.h2.Driver
-
   jpa:
     hibernate:
       ddl-auto: create-drop
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
-
   flyway:
     enabled: false
-
-  security:
-    user:
-      name: admin
-      password: admin
+auth:
+  jwt:
+    secret-base64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=

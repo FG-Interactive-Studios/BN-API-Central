@@ -97,6 +97,47 @@ Responsável por:
 - equipar/desequipar itens;
 - integração com saldo do jogador.
 
+
+## Autenticação e sessões
+
+O backend emite tokens JWT assinados para identificar o jogador. Tokens de acesso
+duram 15 minutos; sessões renováveis (refresh tokens rotativos) duram 30 dias.
+O servidor verifica as sessões no banco a cada request protegido, permitindo
+logout e revogação imediatos.
+
+Endpoints públicos: `GET /api/health`, `POST /api/auth/register`,
+`POST /api/auth/login` e `POST /api/auth/refresh`.
+
+Endpoints autenticados: `GET /api/users/me`, `GET /api/auth/sessions`,
+`POST /api/auth/logout`, `POST /api/auth/logout-all` e
+`DELETE /api/auth/sessions/{sessionId}`. As demais rotas também exigem
+`Authorization: Bearer <accessToken>`.
+
+**Desenvolvimento local:** o launch `BN API - Local DB (Debug)` ativa
+`SPRING_PROFILES_ACTIVE=local` e gera automaticamente uma chave JWT aleatória
+em memória quando `AUTH_JWT_SECRET_B64` não está configurada. Não é preciso
+criar um arquivo `.env` apenas para isso. A chave muda a cada reinicialização,
+invalidando tokens de acesso anteriores. Se a sessão e o refresh token ainda existirem no banco, o cliente pode renovar o acesso; caso contrário, será necessário um novo login.
+
+**Produção:** `AUTH_JWT_SECRET_B64` continua **obrigatória**. Gere uma chave
+aleatória de pelo menos 32 bytes em Base64 (por exemplo,
+`openssl rand -base64 48`) e configure-a de forma persistente no ambiente.
+Sem ela a API não inicia. Nunca use o perfil `local` em produção e não
+versione segredos. Se uma chave explícita estiver configurada no perfil
+`local`, ela também será validada e utilizada.
+
+**Terminal:** inicie com o perfil `local` explicitamente; sem perfil ativo,
+a API assume a política segura de produção. O Maven não carrega arquivos
+`.env` automaticamente.
+
+Os tokens contêm somente a identidade e informações mínimas para exibição.
+O cliente nunca escolhe o ID do usuário autenticado: use `GET /api/users/me`
+para carregar o perfil atual do próprio jogador. **Dados de outros jogadores
+e permissões são sempre conferidos no servidor**.
+
+Contrato e recomendações para o frontend:
+[Autenticação e sessões](docs/api/auth-sessions.md).
+
 ## Princípio server-authoritative
 
 O cliente **não decide**:
@@ -136,7 +177,7 @@ Ele executa automaticamente a task `BN API: Verificar Docker Local`, que:
 docker compose up -d
 ```
 
-2. Configure as variáveis de ambiente:
+2. Opcionalmente, prepare um arquivo `.env` para consulta local (o Maven não o lê automaticamente):
 
 ```bash
 cp .env.example .env
@@ -158,13 +199,13 @@ PORT=8080
 Linux/macOS:
 
 ```bash
-./mvnw spring-boot:run
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 Windows:
 
 ```powershell
-.\mvnw.cmd spring-boot:run
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 ## Configuração do banco local
