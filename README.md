@@ -144,6 +144,12 @@ O cliente nunca escolhe o ID do usuário autenticado: use `GET /api/users/me`
 para carregar o perfil atual do próprio jogador. **Dados de outros jogadores
 e permissões são sempre conferidos no servidor**.
 
+Contrato de comunicação em tempo real:
+[WebSocket autenticado](docs/api/realtime-websocket.md). O navegador solicita
+um ticket de uso único com seu JWT, conecta sem transmitir `userId`, e recebe
+eventos exclusivamente dirigidos ao seu jogador. Sala de espera e partida
+serão implementadas em PRs seguintes.
+
 Contrato e recomendações para o frontend:
 [Autenticação e sessões](docs/api/auth-sessions.md),
 [Segurança da conta](docs/api/account-security.md) e
