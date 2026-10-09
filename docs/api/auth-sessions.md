@@ -46,6 +46,8 @@ Send `Authorization: Bearer <accessToken>` for:
 - `GET /api/users/me` — own current profile; no ID in request.
 - `PATCH /api/users/me` — update own nickname/avatar by JWT identity.
 - `POST /api/auth/logout` — revoke the only active session (204).
+- `POST /api/auth/change-password` — verify current password, set a new BCrypt
+  password and immediately revoke the active session (204). Log in again.
 
 A new login automatically revokes any previous session belonging to the same
 player, including sessions from another device. Old JWTs and refresh tokens

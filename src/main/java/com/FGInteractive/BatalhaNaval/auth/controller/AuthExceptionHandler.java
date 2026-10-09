@@ -36,6 +36,12 @@ public class AuthExceptionHandler {
         return response(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage(), Map.of());
     }
 
+    @ExceptionHandler(PasswordChangeException.class)
+    public ResponseEntity<AuthErrorResponse> invalidPasswordChange(PasswordChangeException ex) {
+        return response(HttpStatus.BAD_REQUEST, ex.getCode(), ex.getMessage(),
+            Map.of(ex.getField(), ex.getMessage()));
+    }
+
     private ResponseEntity<AuthErrorResponse> response(HttpStatus status, String code,
                                                        String message, Map<String,String> fields) {
         return ResponseEntity.status(status).body(

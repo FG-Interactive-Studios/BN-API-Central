@@ -52,6 +52,11 @@ public class SessionService {
         // Authentication must finish before the lock is taken.
         Auth locked = authRepository.lockById(credential.getId())
             .orElseThrow(InvalidSessionException::new);
+        // Revalidate under the credential lock: a password change can race with
+        // the first verification and must never allow the old password to log in.
+        if (!passwordEncoder.matches(request.password(), locked.getPasswordHash())) {
+            throw new InvalidSessionException();
+        }
         Instant now = Instant.now();
         sessionRepository.revokeAllForUser(locked.getUser().getId(), now);
         String refreshToken = newRefreshToken();

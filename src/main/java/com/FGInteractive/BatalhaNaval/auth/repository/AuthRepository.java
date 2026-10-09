@@ -16,4 +16,8 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select a from Auth a where a.id = :id")
     Optional<Auth> lockById(@Param("id") Long id);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Auth a where a.user.id = :userId")
+    Optional<Auth> lockByUserId(@Param("userId") Long userId);
 }

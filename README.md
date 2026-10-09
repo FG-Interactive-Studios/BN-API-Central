@@ -115,7 +115,10 @@ IDs numéricos). Os demais endpoints protegidos incluem `GET /api/users/me`,
 
 A API mantém **uma única sessão ativa por jogador**. Um novo login revoga a
 sessão anterior imediatamente, inclusive em outro dispositivo. Por isso a
-listagem e a revogação de múltiplas sessões foram removidas. Para exibição,
+listagem e a revogação de múltiplas sessões foram removidas. Para segurança da
+conta, `POST /api/auth/change-password` exige o JWT, a senha atual e a
+nova senha, e revoga imediatamente a sessão após a troca (novo login obrigatório).
+Para exibição,
 o cliente deve ler dados atualizados do perfil privado ou público, não claims
 de nickname potencialmente desatualizados no JWT.
 
@@ -142,7 +145,8 @@ para carregar o perfil atual do próprio jogador. **Dados de outros jogadores
 e permissões são sempre conferidos no servidor**.
 
 Contrato e recomendações para o frontend:
-[Autenticação e sessões](docs/api/auth-sessions.md) e
+[Autenticação e sessões](docs/api/auth-sessions.md),
+[Segurança da conta](docs/api/account-security.md) e
 [Perfis públicos/privados](docs/api/player-profiles.md).
 
 **Modelo para produção:** use o arquivo [`.env.production.example`](.env.production.example)

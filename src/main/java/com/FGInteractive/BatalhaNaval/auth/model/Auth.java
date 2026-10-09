@@ -25,5 +25,6 @@ public class Auth {
     public User getUser(){return user;}
     public String getEmail(){return email;}
     public String getPasswordHash(){return passwordHash;}
+    public void changePasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public Instant getCreatedAt(){return createdAt;}
 }
