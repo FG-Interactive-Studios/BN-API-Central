@@ -152,7 +152,8 @@ class PrivateLobbiesPostgresIntegrationTests {
 
         // Repeat "ready: true" is idempotent even after the phase transition.
         String same = ready(a, true);
-        assertEquals(JsonPath.read(prepared, "$.revision"), JsonPath.read(same, "$.revision"));
+        assertEquals(((Number) JsonPath.read(prepared, "$.revision")).longValue(),
+            ((Number) JsonPath.read(same, "$.revision")).longValue());
         leave(a);
         mvc.perform(get("/api/matchmaking/lobbies/me")
             .header("Authorization", "Bearer " + b.jwt))
