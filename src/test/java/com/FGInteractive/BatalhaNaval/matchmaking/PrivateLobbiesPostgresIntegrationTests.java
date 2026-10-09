@@ -242,6 +242,7 @@ class PrivateLobbiesPostgresIntegrationTests {
         String outside = JsonPath.read(create(outsider), "$.code");
 
         try (Connection c = connect(outsider)) {
+            c.listener.awaitType("LOBBY_UPDATED"); // Ignore outsider snapshot.
             try (Connection hostSocket = connect(a)) {
                 String online = hostSocket.listener.awaitType("LOBBY_UPDATED");
                 assertEquals(true, JsonPath.read(online, "$.data.players[0].connected"));

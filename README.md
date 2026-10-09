@@ -144,6 +144,10 @@ O cliente nunca escolhe o ID do usuário autenticado: use `GET /api/users/me`
 para carregar o perfil atual do próprio jogador. **Dados de outros jogadores
 e permissões são sempre conferidos no servidor**.
 
+Salas privadas (lobby para 2 jogadores, código de convite, prontidão
+e transição para preparação): [API de Lobby](docs/api/private-lobbies.md).
+As ações REST usam somente o JWT; nenhum `userId` é enviado pelo cliente.
+
 Contrato de comunicação em tempo real:
 [WebSocket autenticado](docs/api/realtime-websocket.md). O navegador solicita
 um ticket de uso único com seu JWT, conecta sem transmitir `userId`, e recebe
