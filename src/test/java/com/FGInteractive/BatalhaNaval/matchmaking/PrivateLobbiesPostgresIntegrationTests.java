@@ -103,7 +103,7 @@ class PrivateLobbiesPostgresIntegrationTests {
         mvc.perform(get("/api/matchmaking/lobbies/me")
             .header("Authorization", "Bearer " + a.jwt))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.code").value(JsonPath.read(room, "$.code")));
+            .andExpect(jsonPath("$.code").value((String) JsonPath.read(room, "$.code")));
         leave(a);
     }
 
