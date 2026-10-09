@@ -232,7 +232,7 @@ public class MatchmakingService {
             }
             if (!changed) snapshot = view(room);
         }
-        if (changed) broadcast(room);
+        if (changed || battleStateChanged) broadcast(room);
         else realtime.sendToPlayer(event.userId(), "LOBBY_UPDATED", snapshot);
         // New socket/second tab receives a private match snapshot, not just
         // a lobby update. Deadline changes are also visible to the opponent.
