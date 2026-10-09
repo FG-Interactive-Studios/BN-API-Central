@@ -14,6 +14,10 @@ public interface AuthRepository extends JpaRepository<Auth, Long> {
     Optional<Auth> findByUser_Id(Long userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select a from Auth a where a.id = :id")
-    Optional<Auth> lockById(@Param("id") Long id);
+    @Query("select a from Auth a where a.email = :email")
+    Optional<Auth> lockByEmail(@Param("email") String email);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select a from Auth a where a.user.id = :userId")
+    Optional<Auth> lockByUserId(@Param("userId") Long userId);
 }

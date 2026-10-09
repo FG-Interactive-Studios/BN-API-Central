@@ -62,6 +62,6 @@ reconexão mediante uma autenticação válida.
 
 ## Fora deste escopo
 
-Upload de imagem, alteração de e-mail/senha, moedas, ranking, inventário e
-estatísticas. Mudança de senha exigirá confirmação da senha atual no domínio
-`auth`.
+Upload de imagem, alteração de e-mail, moedas, ranking, inventário e
+estatísticas. A mudança de senha está no domínio `auth` e é documentada em
+[Segurança da conta](account-security.md).
