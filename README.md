@@ -117,7 +117,7 @@ Endpoints autenticados: `GET /api/users/me`, `GET /api/auth/sessions`,
 `SPRING_PROFILES_ACTIVE=local` e gera automaticamente uma chave JWT aleatória
 em memória quando `AUTH_JWT_SECRET_B64` não está configurada. Não é preciso
 criar um arquivo `.env` apenas para isso. A chave muda a cada reinicialização,
-invalidando tokens de acesso anteriores (o jogador deverá autenticar novamente).
+invalidando tokens de acesso anteriores. Se a sessão e o refresh token ainda existirem no banco, o cliente pode renovar o acesso; caso contrário, será necessário um novo login.
 
 **Produção:** `AUTH_JWT_SECRET_B64` continua **obrigatória**. Gere uma chave
 aleatória de pelo menos 32 bytes em Base64 (por exemplo,
