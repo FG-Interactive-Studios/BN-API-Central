@@ -78,6 +78,18 @@ class BattleEnginePostgresIntegrationTests {
             """;
     }
 
+    private String fleetOffset() {
+        return """
+            {"ships":[
+              {"type":"CARRIER","row":5,"col":5,"orientation":"HORIZONTAL"},
+              {"type":"BATTLESHIP","row":6,"col":5,"orientation":"HORIZONTAL"},
+              {"type":"CRUISER","row":7,"col":5,"orientation":"HORIZONTAL"},
+              {"type":"SUBMARINE","row":8,"col":5,"orientation":"HORIZONTAL"},
+              {"type":"DESTROYER","row":9,"col":5,"orientation":"HORIZONTAL"}
+            ]}
+            """;
+    }
+
     private String confirm(Player p) throws Exception {
         return mvc.perform(post("/api/matches/me/placement/confirm")
             .header("Authorization","Bearer "+p.jwt))
@@ -251,12 +263,7 @@ class BattleEnginePostgresIntegrationTests {
             mvc.perform(put("/api/matches/me/placement")
                 .header("Authorization","Bearer "+guest.jwt)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(fleet()
-                    .replace("\\"row\\":0,\\"col\\":0","\\"row\\":5,\\"col\\":5")
-                    .replace("\\"row\\":1,\\"col\\":0","\\"row\\":6,\\"col\\":5")
-                    .replace("\\"row\\":2,\\"col\\":0","\\"row\\":7,\\"col\\":5")
-                    .replace("\\"row\\":3,\\"col\\":0","\\"row\\":8,\\"col\\":5")
-                    .replace("\\"row\\":4,\\"col\\":0","\\"row\\":9,\\"col\\":5")))
+                .content(fleetOffset()))
                 .andExpect(status().isOk());
             try (Connection a=connect(host);Connection b=connect(guest)) {
                 confirm(host);confirm(guest);
