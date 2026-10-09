@@ -1,8 +1,8 @@
 package com.FGInteractive.BatalhaNaval.shared.websocket;
 
 import com.FGInteractive.BatalhaNaval.auth.repository.AuthSessionRepository;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
@@ -16,18 +16,18 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
-import org.springframework.web.socket.handler.SubProtocolCapable;
+import org.springframework.web.socket.SubProtocolCapable;
 
 @Component
 public class RealtimeWebSocketHandler extends TextWebSocketHandler implements SubProtocolCapable {
     private static final int MAX_PAYLOAD_CHARS = 4096;
     private static final CloseStatus SESSION_REVOKED = new CloseStatus(1008, "Session inactive");
     private final AuthSessionRepository sessions;
-    private final ObjectMapper mapper;
+    private final JsonMapper mapper;
     private final ConcurrentHashMap<Long, ConcurrentHashMap<String, Connection>> connections =
         new ConcurrentHashMap<>();
 
-    public RealtimeWebSocketHandler(AuthSessionRepository sessions, ObjectMapper mapper) {
+    public RealtimeWebSocketHandler(AuthSessionRepository sessions, JsonMapper mapper) {
         this.sessions = sessions;
         this.mapper = mapper;
     }
