@@ -28,3 +28,5 @@ public class UserController {
     public PublicPlayerProfile publicProfile(@PathVariable Long id) {
         return users.publicProfile(id);
     }
+
+}
