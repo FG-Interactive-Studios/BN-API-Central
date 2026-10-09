@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.FGInteractive.BatalhaNaval.match.dto.PlaceFleetRequest.ShipPlacement;
 import com.FGInteractive.BatalhaNaval.match.mode.*;
 import com.FGInteractive.BatalhaNaval.match.model.Board;
+import com.FGInteractive.BatalhaNaval.match.model.Cell;
 import com.FGInteractive.BatalhaNaval.match.model.Orientation;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -35,14 +36,14 @@ class GameModeCompositionTests {
 
     @Test void triangularGeometryHasCorrectPlayableCellsAndNeighbors() {
         var triangle = new TriangularGeometry(8);
-        assertTrue(triangle.contains(new Board.Cell(7, 7)));
-        assertTrue(triangle.contains(new Board.Cell(2, 1)));
-        assertFalse(triangle.contains(new Board.Cell(1, 3)));
-        assertFalse(triangle.contains(new Board.Cell(-1, 0)));
+        assertTrue(triangle.contains(new Cell(7, 7)));
+        assertTrue(triangle.contains(new Cell(2, 1)));
+        assertFalse(triangle.contains(new Cell(1, 3)));
+        assertFalse(triangle.contains(new Cell(-1, 0)));
         assertEquals(36, triangle.cells().size());
-        assertEquals(1, triangle.neighbors(new Board.Cell(0, 0)).size());
-        assertTrue(triangle.neighbors(new Board.Cell(2, 2)).contains(new Board.Cell(3, 2)));
-        assertFalse(triangle.neighbors(new Board.Cell(2, 2)).contains(new Board.Cell(1, 2)));
+        assertEquals(1, triangle.neighbors(new Cell(0, 0)).size());
+        assertTrue(triangle.neighbors(new Cell(2, 2)).contains(new Cell(3, 2)));
+        assertFalse(triangle.neighbors(new Cell(2, 2)).contains(new Cell(1, 2)));
     }
 
     @Test void differentFleetsCannotBeInterchangedOrSpoofed() {

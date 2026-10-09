@@ -1,5 +1,5 @@
 package com.FGInteractive.BatalhaNaval.match.mode;
-import com.FGInteractive.BatalhaNaval.match.model.Board.Cell;
+import com.FGInteractive.BatalhaNaval.match.model.Cell;
 import java.util.List;
 import java.util.Map;
 /** Safe public metadata, no server rule objects or private placements. */

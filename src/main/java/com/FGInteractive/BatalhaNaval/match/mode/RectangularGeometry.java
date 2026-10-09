@@ -1,5 +1,5 @@
 package com.FGInteractive.BatalhaNaval.match.mode;
-import com.FGInteractive.BatalhaNaval.match.model.Board.Cell;
+import com.FGInteractive.BatalhaNaval.match.model.Cell;
 public record RectangularGeometry(int rows, int columns) implements BoardGeometry {
     public RectangularGeometry {
         if (rows < 2 || columns < 2 || rows > 30 || columns > 30) {

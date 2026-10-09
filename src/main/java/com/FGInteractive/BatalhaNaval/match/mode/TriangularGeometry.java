@@ -1,5 +1,5 @@
 package com.FGInteractive.BatalhaNaval.match.mode;
-import com.FGInteractive.BatalhaNaval.match.model.Board.Cell;
+import com.FGInteractive.BatalhaNaval.match.model.Cell;
 
 /**
  * Triangular playable mask of square cells, not triangular tiles.

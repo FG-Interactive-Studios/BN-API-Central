@@ -1,6 +1,6 @@
 package com.FGInteractive.BatalhaNaval.match.mode;
 import com.FGInteractive.BatalhaNaval.match.dto.PlaceFleetRequest.ShipPlacement;
-import com.FGInteractive.BatalhaNaval.match.model.Board.Cell;
+import com.FGInteractive.BatalhaNaval.match.model.Cell;
 import com.FGInteractive.BatalhaNaval.match.model.Orientation;
 import java.util.ArrayList;
 import java.util.List;

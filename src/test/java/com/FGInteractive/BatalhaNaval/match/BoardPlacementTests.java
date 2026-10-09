@@ -22,11 +22,11 @@ class BoardPlacementTests {
         Board board = Board.from(valid());
         assertEquals(5, board.ships().size());
         assertEquals(17, board.occupied().size());
-        assertTrue(board.occupied().contains(new Board.Cell(0,4)));
-        assertFalse(board.occupied().contains(new Board.Cell(9,9)));
+        assertTrue(board.occupied().contains(new Cell(0,4)));
+        assertFalse(board.occupied().contains(new Cell(9,9)));
         assertThrows(UnsupportedOperationException.class, () -> board.ships().clear());
         assertThrows(UnsupportedOperationException.class,
-            () -> board.occupied().add(new Board.Cell(9,9)));
+            () -> board.occupied().add(new Cell(9,9)));
     }
 
     @Test void rejectsIncompleteDuplicateOrNullFleetInputs() {

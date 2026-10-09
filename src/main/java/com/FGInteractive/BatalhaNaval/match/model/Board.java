@@ -91,5 +91,4 @@ public final class Board {
         throw new IllegalStateException("Mode has no feasible random fleet placement");
     }
 
-    public record Cell(int row, int col) {}
 }
