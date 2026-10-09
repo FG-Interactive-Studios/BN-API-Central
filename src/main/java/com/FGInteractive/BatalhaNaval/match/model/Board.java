@@ -30,7 +30,8 @@ public final class Board {
         EnumSet<ShipType> types = EnumSet.noneOf(ShipType.class);
         Set<Cell> cells = new HashSet<>();
         for (ShipPlacement ship : placements) {
-            if (ship == null || ship.type() == null || ship.orientation() == null) {
+            if (ship == null || ship.type() == null || ship.orientation() == null
+                || ship.row() == null || ship.col() == null) {
                 throw new IllegalArgumentException("Ship type and orientation are required");
             }
             if (!types.add(ship.type())) {
