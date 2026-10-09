@@ -250,7 +250,7 @@ class PrivateLobbiesPostgresIntegrationTests {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {"code":"%s"}
-                        """.formatted(code))
+                        """.formatted(code)))
                     .andReturn().getResponse().getStatus();
             };
             java.util.concurrent.Callable<Integer> secondJoin = () -> {
@@ -260,7 +260,7 @@ class PrivateLobbiesPostgresIntegrationTests {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {"code":"%s"}
-                        """.formatted(code))
+                        """.formatted(code)))
                     .andReturn().getResponse().getStatus();
             };
             var one = executor.submit(firstJoin);
