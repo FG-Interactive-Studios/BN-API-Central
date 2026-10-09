@@ -216,8 +216,17 @@ public class MatchmakingService {
             changed = room.setConnected(event.userId(), online);
             if (room.phase() == LobbyRoom.Phase.PLAYING) {
                 hasBattle = true;
-                battleStateChanged = preparations.battle(code).setPlayerConnected(
-                    event.userId(), online, Instant.now(), disconnectGrace);
+                BattleRound battle = preparations.battle(code);
+                Instant now = Instant.now();
+                // An overdue reconnect cannot erase an already expired
+                // deadline merely because the watchdog has not run yet.
+                if (battle.resolveDisconnects(now)) {
+                    room.finishBattle();
+                    battleStateChanged = true;
+                } else {
+                    battleStateChanged = battle.setPlayerConnected(
+                        event.userId(), online, now, disconnectGrace);
+                }
             } else if (room.phase() == LobbyRoom.Phase.FINISHED) {
                 hasBattle = true;
             }
