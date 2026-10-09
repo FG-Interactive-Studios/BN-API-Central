@@ -43,17 +43,11 @@ public class SessionService {
     @Transactional
     public TokenResponse login(LoginRequest request) {
         String email = request.email() == null ? "" : request.email().trim().toLowerCase(Locale.ROOT);
-        Auth credential = authRepository.findByEmail(email).orElseThrow(InvalidSessionException::new);
-        if (!passwordEncoder.matches(request.password(), credential.getPasswordHash())) {
-            throw new InvalidSessionException();
-        }
-
-        // Lock the credential row to serialize logins for the same account across API instances.
-        // Authentication must finish before the lock is taken.
-        Auth locked = authRepository.lockById(credential.getId())
+        // Read the credential for the FIRST time while acquiring the row lock.
+        // Reading before the lock can leave a stale password hash in JPA's
+        // persistence context if a concurrent password change commits meanwhile.
+        Auth locked = authRepository.lockByEmail(email)
             .orElseThrow(InvalidSessionException::new);
-        // Revalidate under the credential lock: a password change can race with
-        // the first verification and must never allow the old password to log in.
         if (!passwordEncoder.matches(request.password(), locked.getPasswordHash())) {
             throw new InvalidSessionException();
         }
