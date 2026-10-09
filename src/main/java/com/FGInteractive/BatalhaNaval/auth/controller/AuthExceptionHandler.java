@@ -36,11 +36,6 @@ public class AuthExceptionHandler {
         return response(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", ex.getMessage(), Map.of());
     }
 
-    @ExceptionHandler(SessionNotFoundException.class)
-    public ResponseEntity<AuthErrorResponse> unknownSession(SessionNotFoundException ex) {
-        return response(HttpStatus.NOT_FOUND, "SESSION_NOT_FOUND", ex.getMessage(), Map.of());
-    }
-
     private ResponseEntity<AuthErrorResponse> response(HttpStatus status, String code,
                                                        String message, Map<String,String> fields) {
         return ResponseEntity.status(status).body(

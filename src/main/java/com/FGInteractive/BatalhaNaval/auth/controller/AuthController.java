@@ -4,7 +4,6 @@ import com.FGInteractive.BatalhaNaval.auth.dto.*;
 import com.FGInteractive.BatalhaNaval.auth.service.AuthService;
 import com.FGInteractive.BatalhaNaval.auth.service.SessionService;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -43,21 +42,5 @@ public class AuthController {
         sessions.logout(Long.parseLong(jwt.getSubject()), UUID.fromString(jwt.getClaimAsString("sid")));
     }
 
-    @PostMapping("/logout-all")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void logoutAll(@AuthenticationPrincipal Jwt jwt) {
-        sessions.logoutAll(Long.parseLong(jwt.getSubject()));
-    }
 
-    @GetMapping("/sessions")
-    public List<SessionResponse> sessions(@AuthenticationPrincipal Jwt jwt) {
-        return sessions.activeSessions(Long.parseLong(jwt.getSubject()),
-            UUID.fromString(jwt.getClaimAsString("sid")));
-    }
-
-    @DeleteMapping("/sessions/{sessionId}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void revoke(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID sessionId) {
-        sessions.revoke(Long.parseLong(jwt.getSubject()), sessionId);
-    }
 }
