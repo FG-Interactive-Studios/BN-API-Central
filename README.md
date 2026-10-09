@@ -138,6 +138,11 @@ e permissões são sempre conferidos no servidor**.
 Contrato e recomendações para o frontend:
 [Autenticação e sessões](docs/api/auth-sessions.md).
 
+**Modelo para produção:** use o arquivo [`.env.production.example`](.env.production.example)
+como base, preencha os valores reais **fora do Git** e siga as
+[instruções de implantação](docs/deployment/environment.md). A chave
+JWT é obrigatória em produção; nenhum segredo real é versionado.
+
 ## Princípio server-authoritative
 
 O cliente **não decide**:

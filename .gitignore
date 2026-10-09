@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Arquivos de ambiente com credenciais: nunca versionar.
+.env
+.env.*
+!.env.example
+!.env.production.example
