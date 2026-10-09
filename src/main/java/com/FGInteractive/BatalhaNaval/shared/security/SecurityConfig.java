@@ -23,6 +23,9 @@ public class SecurityConfig {
             .httpBasic(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
+                // WebSocket handshakes cannot set an Authorization header in browsers.
+                // The handshake interceptor requires a single-use, session-bound ticket.
+                .requestMatchers(HttpMethod.GET, "/ws").permitAll()
                 // Only numeric public-profile paths are anonymous; "/api/users/me" stays protected.
                 .requestMatchers(request -> "GET".equals(request.getMethod())
                     && request.getRequestURI().substring(request.getContextPath().length())
