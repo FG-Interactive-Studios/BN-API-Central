@@ -97,6 +97,37 @@ Responsável por:
 - equipar/desequipar itens;
 - integração com saldo do jogador.
 
+
+## Autenticação e sessões
+
+O backend emite tokens JWT assinados para identificar o jogador. Tokens de acesso
+duram 15 minutos; sessões renováveis (refresh tokens rotativos) duram 30 dias.
+O servidor verifica as sessões no banco a cada request protegido, permitindo
+logout e revogação imediatos.
+
+Endpoints públicos: `GET /api/health`, `POST /api/auth/register`,
+`POST /api/auth/login` e `POST /api/auth/refresh`.
+
+Endpoints autenticados: `GET /api/users/me`, `GET /api/auth/sessions`,
+`POST /api/auth/logout`, `POST /api/auth/logout-all` e
+`DELETE /api/auth/sessions/{sessionId}`. As demais rotas também exigem
+`Authorization: Bearer <accessToken>`.
+
+**Antes de iniciar a aplicação**, configure a variável obrigatória
+`AUTH_JWT_SECRET_B64` com uma chave aleatória em Base64 de 32 bytes ou mais.
+Um modo de gerar a chave é `openssl rand -base64 48`. Não faça commit da
+chave. O VS Code local carrega variáveis do arquivo `.env` não versionado;
+ao rodar pelo terminal, exporte as variáveis desse arquivo no ambiente
+do processo, pois o Maven não lê `.env` automaticamente.
+
+Os tokens contêm somente a identidade e informações mínimas para exibição.
+O cliente nunca escolhe o ID do usuário autenticado: use `GET /api/users/me`
+para carregar o perfil atual do próprio jogador. **Dados de outros jogadores
+e permissões são sempre conferidos no servidor**.
+
+Contrato e recomendações para o frontend:
+[Autenticação e sessões](docs/api/auth-sessions.md).
+
 ## Princípio server-authoritative
 
 O cliente **não decide**:
