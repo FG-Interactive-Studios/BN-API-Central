@@ -246,6 +246,18 @@ class BattleEnginePostgresIntegrationTests {
         Player host=player(),guest=player();
         try {
             setup(host,guest);
+            // Deliberately use DIFFERENT secret boards. Identical boards could
+            // hide a regression leaking the opponent's placements.
+            mvc.perform(put("/api/matches/me/placement")
+                .header("Authorization","Bearer "+guest.jwt)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(fleet()
+                    .replace("\\"row\\":0,\\"col\\":0","\\"row\\":5,\\"col\\":5")
+                    .replace("\\"row\\":1,\\"col\\":0","\\"row\\":6,\\"col\\":5")
+                    .replace("\\"row\\":2,\\"col\\":0","\\"row\\":7,\\"col\\":5")
+                    .replace("\\"row\\":3,\\"col\\":0","\\"row\\":8,\\"col\\":5")
+                    .replace("\\"row\\":4,\\"col\\":0","\\"row\\":9,\\"col\\":5")))
+                .andExpect(status().isOk());
             try (Connection a=connect(host);Connection b=connect(guest)) {
                 confirm(host);confirm(guest);
                 String forHost=a.listener.nextType("BATTLE_UPDATED");
@@ -254,7 +266,9 @@ class BattleEnginePostgresIntegrationTests {
                 assertEquals(host.id,((Number)JsonPath.read(forGuest,"$.data.turnPlayerId")).longValue());
                 assertEquals(5,((Number)JsonPath.read(forHost,"$.data.yourShips.length()")).intValue());
                 assertEquals(5,((Number)JsonPath.read(forGuest,"$.data.yourShips.length()")).intValue());
-                String outcome=shoot(host,0,0);
+                assertEquals(0,((Number)JsonPath.read(forHost,"$.data.yourShips[1].row")).intValue());
+                assertEquals(5,((Number)JsonPath.read(forGuest,"$.data.yourShips[1].row")).intValue());
+                String outcome=shoot(host,5,5);
                 assertEquals(true,JsonPath.read(outcome,"$.shotsFired[0].hit"));
                 String hostEvent=a.listener.nextShotCount(1,"shotsFired");
                 String guestEvent=b.listener.nextShotCount(1,"shotsReceived");

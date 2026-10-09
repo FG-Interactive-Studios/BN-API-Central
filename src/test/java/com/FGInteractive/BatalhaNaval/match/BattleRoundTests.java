@@ -75,7 +75,6 @@ class BattleRoundTests {
             assertEquals(mode.fleet().occupiedCells()-1,game.view(11).shotsFired().size());
             assertEquals(host.ships(),game.view(10).yourShips());
             assertEquals(guest.ships(),game.view(11).yourShips());
-            assertNotEquals(host.ships(),game.view(11).yourShips());
             assertTrue(game.view(10).shotsReceived().stream().noneMatch(s->s.hit()));
             assertEquals("FINISHED",game.view(11).status());
         }
