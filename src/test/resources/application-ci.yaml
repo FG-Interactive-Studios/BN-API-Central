@@ -4,3 +4,6 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
+auth:
+  jwt:
+    secret-base64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=

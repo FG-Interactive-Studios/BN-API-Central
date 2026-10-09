@@ -20,7 +20,8 @@
         "panel": "dedicated",
         "clear": true
       },
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env"
     },
     {
       "name": "BN API - Production DB (Debug)",
