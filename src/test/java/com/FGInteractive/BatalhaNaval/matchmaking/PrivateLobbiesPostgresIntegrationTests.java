@@ -234,12 +234,52 @@ class PrivateLobbiesPostgresIntegrationTests {
         leave(guest);
     }
 
+
+    @Test
+    void concurrentJoinsCannotOccupyTheSameFinalSlot() throws Exception {
+        Player host = player(), first = player(), second = player();
+        String code = JsonPath.read(create(host), "$.code");
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            java.util.concurrent.Callable<Integer> firstJoin = () -> {
+                start.await();
+                return mvc.perform(post("/api/matchmaking/lobbies/join")
+                    .header("Authorization", "Bearer " + first.jwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\\"code\\":\\"" + code + "\\"}"))
+                    .andReturn().getResponse().getStatus();
+            };
+            java.util.concurrent.Callable<Integer> secondJoin = () -> {
+                start.await();
+                return mvc.perform(post("/api/matchmaking/lobbies/join")
+                    .header("Authorization", "Bearer " + second.jwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("{\\"code\\":\\"" + code + "\\"}"))
+                    .andReturn().getResponse().getStatus();
+            };
+            var one = executor.submit(firstJoin);
+            var two = executor.submit(secondJoin);
+            start.countDown();
+            int statusA = one.get(10, TimeUnit.SECONDS);
+            int statusB = two.get(10, TimeUnit.SECONDS);
+            assertEquals(java.util.Set.of(200, 409), java.util.Set.of(statusA, statusB));
+            mvc.perform(get("/api/matchmaking/lobbies/me")
+                .header("Authorization", "Bearer " + host.jwt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.players.length()").value(2));
+        } finally {
+            executor.shutdownNow();
+            leave(host);
+        }
+    }
+
     @Test
     void websocketPresenceIsPrivateAndReconnectResendsSnapshot() throws Exception {
         Player a = player(), b = player(), outsider = player();
         String code = JsonPath.read(create(a), "$.code");
         join(b, code);
-        String outside = JsonPath.read(create(outsider), "$.code");
+        create(outsider);
 
         try (Connection c = connect(outsider)) {
             c.listener.awaitType("LOBBY_UPDATED"); // Ignore outsider snapshot.
