@@ -53,7 +53,7 @@ public class AccountSecurityService {
 
         credential.changePasswordHash(passwordEncoder.encode(replacement));
         credentials.saveAndFlush(credential);
-        // After success both the current JWT and the refresh token must stop working.
-        sessions.revokeAllForUser(userId, Instant.now());
+        // Keep the authenticated session, access JWT and refresh token unchanged.
+        // Changing a password only updates credentials; logout is a separate action.
     }
 }

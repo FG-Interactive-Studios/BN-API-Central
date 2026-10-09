@@ -117,10 +117,10 @@ A API mantém **uma única sessão ativa por jogador**. Um novo login revoga a
 sessão anterior imediatamente, inclusive em outro dispositivo. Por isso a
 listagem e a revogação de múltiplas sessões foram removidas. Para segurança da
 conta, `POST /api/auth/change-password` exige o JWT, a senha atual e a
-nova senha, e revoga imediatamente a sessão após a troca (novo login obrigatório).
-Para exibição,
-o cliente deve ler dados atualizados do perfil privado ou público, não claims
-de nickname potencialmente desatualizados no JWT.
+nova senha, **sem encerrar a sessão**. O jogador continua usando seus tokens,
+inclusive durante uma partida. Para exibição, o cliente deve ler dados
+atualizados do perfil privado ou público, não claims de nickname
+potencialmente desatualizados no JWT.
 
 **Desenvolvimento local:** o launch `BN API - Local DB (Debug)` ativa
 `SPRING_PROFILES_ACTIVE=local` e gera automaticamente uma chave JWT aleatória

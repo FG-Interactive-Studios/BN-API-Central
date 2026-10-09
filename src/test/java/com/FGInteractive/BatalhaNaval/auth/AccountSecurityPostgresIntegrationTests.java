@@ -83,7 +83,7 @@ class AccountSecurityPostgresIntegrationTests {
     }
 
     @Test
-    void passwordChangeInvalidatesAccessAndRefreshTokensUntilFreshLogin() throws Exception {
+    void passwordChangeKeepsSessionAndTokensValidWithNormalRefreshRotation() throws Exception {
         String email = register();
         String otherEmail = register();
         String otherAccess = value(login(otherEmail, OLD_PASSWORD), "$.accessToken");
@@ -106,21 +106,49 @@ class AccountSecurityPostgresIntegrationTests {
         assertFalse(encoder.matches(OLD_PASSWORD, storedHash));
         assertTrue(encoder.matches(NEW_PASSWORD, storedHash));
 
+        // A successful password change does NOT log the player out.
         mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + access))
-            .andExpect(status().isUnauthorized());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.email").value(email));
+
+        // The existing refresh token is still usable and rotates as usual.
+        String renewed = mvc.perform(post("/api/auth/refresh")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content("{\"refreshToken\":\"" + refresh + "\"}"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        String renewedAccess = value(renewed, "$.accessToken");
+        String renewedRefresh = value(renewed, "$.refreshToken");
+        assertNotEquals(refresh, renewedRefresh);
+
+        mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + access))
+            .andExpect(status().isOk());
+        mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + renewedAccess))
+            .andExpect(status().isOk());
         mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
             .content("{\"refreshToken\":\"" + refresh + "\"}"))
             .andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"refreshToken\":\"" + renewedRefresh + "\"}"))
+            .andExpect(status().isOk());
+
+        // Old credentials are rejected for new logins; the current session survives.
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
             .content("""
                 {"email":"%s","password":"%s"}
                 """.formatted(email, OLD_PASSWORD)))
             .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + renewedAccess))
+            .andExpect(status().isOk());
         mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + otherAccess))
             .andExpect(status().isOk());
 
-        String newAccess = value(login(email, NEW_PASSWORD), "$.accessToken");
-        mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + newAccess))
+        // A deliberate new login with the new password still replaces the old
+        // session, as required by the single-session-per-account policy.
+        String freshAccess = value(login(email, NEW_PASSWORD), "$.accessToken");
+        mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + renewedAccess))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/users/me").header("Authorization", "Bearer " + freshAccess))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.email").value(email));
     }
