@@ -28,7 +28,7 @@ class BattleRoundTests {
         var mode=duel(new AlternatingTurnRule());
         var round=new BattleRound("ABCD23", mode, 10, 11,
             board(mode,0,0),board(mode,1,1));
-        assertEquals(10,round.view(11).turnPlayerId());
+        assertEquals(10L,round.view(11).turnPlayerId().longValue());
         assertEquals("PLAYING",round.view(10).status());
         assertThrows(IllegalStateException.class,()->round.fire(11,new Cell(0,0)));
         assertThrows(IllegalArgumentException.class,()->round.fire(10,new Cell(4,0)));
@@ -37,13 +37,13 @@ class BattleRoundTests {
 
         round.fire(10,new Cell(2,2)); // miss
         assertFalse(round.view(10).shotsFired().get(0).hit());
-        assertEquals(11,round.view(10).turnPlayerId());
+        assertEquals(11L,round.view(10).turnPlayerId().longValue());
         assertThrows(IllegalStateException.class,()->round.fire(10,new Cell(1,1)));
         round.fire(11,new Cell(0,3)); // miss
         assertThrows(IllegalStateException.class,()->round.fire(10,new Cell(2,2))); // replay
         round.fire(10,new Cell(1,1)); // sink SCOUT, game over
         assertEquals("FINISHED",round.view(10).status());
-        assertEquals(10,round.view(10).winnerId());
+        assertEquals(10L,round.view(10).winnerId().longValue());
         assertNull(round.view(11).turnPlayerId());
         assertEquals("SCOUT",round.view(10).shotsFired().get(1).sunkShip());
         assertTrue(round.view(11).shotsReceived().get(1).hit());
@@ -70,7 +70,7 @@ class BattleRoundTests {
                 if(i < targets.size()-1) game.fire(11,misses.get(i));
             }
             assertTrue(game.finished());
-            assertEquals(10,game.view(11).winnerId());
+            assertEquals(10L,game.view(11).winnerId().longValue());
             assertEquals(mode.fleet().occupiedCells(),game.view(10).shotsFired().size());
             assertEquals(mode.fleet().occupiedCells()-1,game.view(11).shotsFired().size());
             assertEquals(host.ships(),game.view(10).yourShips());
@@ -91,7 +91,7 @@ class BattleRoundTests {
         var mode=duel(hitAgain);
         var game=new BattleRound("ABCD23",mode,10,11,board(mode,0,0),board(mode,1,1));
         game.fire(10,new Cell(1,1)); // finishes immediately; turn no longer matters.
-        assertEquals(10,game.view(10).winnerId());
+        assertEquals(10L,game.view(10).winnerId().longValue());
 
         // Compose with a two-cell fleet, so the first hit does not finish.
         var extended=new GameModeDefinition("extended", "Extended",new RectangularGeometry(4,4),
@@ -103,11 +103,11 @@ class BattleRoundTests {
             new ShipPlacement("SCOUT",1,0,Orientation.HORIZONTAL)));
         var battle=new BattleRound("ABCD23",extended,10,11,b1,b2);
         battle.fire(10,new Cell(1,0));
-        assertEquals(10,battle.view(10).turnPlayerId());
+        assertEquals(10L,battle.view(10).turnPlayerId().longValue());
         assertTrue(battle.view(10).shotsFired().get(0).hit());
         assertNull(battle.view(10).shotsFired().get(0).sunkShip());
         battle.fire(10,new Cell(1,1));
-        assertEquals(10,battle.view(11).winnerId());
+        assertEquals(10L,battle.view(11).winnerId().longValue());
     }
 
     @Test void rejectsInvalidAttackAndVictoryRuleAtModeCompositionTime() {

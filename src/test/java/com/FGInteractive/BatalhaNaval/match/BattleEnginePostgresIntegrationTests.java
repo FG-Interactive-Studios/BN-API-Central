@@ -194,7 +194,11 @@ class BattleEnginePostgresIntegrationTests {
             assertEquals("FINISHED",JsonPath.read(last,"$.status"));
             assertEquals(host.id,((Number)JsonPath.read(last,"$.winnerId")).longValue());
             assertEquals(null,JsonPath.read(last,"$.turnPlayerId"));
-            assertEquals(5,((Number)last.chars().filter(ch->ch=='x').count()).intValue() > -1 ? 5 : 0);
+            assertEquals("CARRIER",JsonPath.read(last,"$.shotsFired[4].sunkShip"));
+            assertEquals("BATTLESHIP",JsonPath.read(last,"$.shotsFired[8].sunkShip"));
+            assertEquals("CRUISER",JsonPath.read(last,"$.shotsFired[11].sunkShip"));
+            assertEquals("SUBMARINE",JsonPath.read(last,"$.shotsFired[14].sunkShip"));
+            assertEquals("DESTROYER",JsonPath.read(last,"$.shotsFired[16].sunkShip"));
             String losingView=view(guest);
             assertEquals("FINISHED",JsonPath.read(losingView,"$.status"));
             assertEquals(host.id,((Number)JsonPath.read(losingView,"$.winnerId")).longValue());
