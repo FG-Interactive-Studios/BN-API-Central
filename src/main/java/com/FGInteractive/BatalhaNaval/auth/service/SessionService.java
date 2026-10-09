@@ -12,7 +12,6 @@ import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HexFormat;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 import java.util.Base64;
@@ -49,10 +48,15 @@ public class SessionService {
             throw new InvalidSessionException();
         }
 
+        // Lock the credential row to serialize logins for the same account across API instances.
+        // Authentication must finish before the lock is taken.
+        Auth locked = authRepository.lockById(credential.getId())
+            .orElseThrow(InvalidSessionException::new);
         Instant now = Instant.now();
+        sessionRepository.revokeAllForUser(locked.getUser().getId(), now);
         String refreshToken = newRefreshToken();
-        AuthSession session = sessionRepository.save(new AuthSession(
-            credential.getUser(), hash(refreshToken), now, now.plus(SESSION_LIFETIME)));
+        AuthSession session = sessionRepository.saveAndFlush(new AuthSession(
+            locked.getUser(), hash(refreshToken), now, now.plus(SESSION_LIFETIME)));
         return tokens(session, credential.getEmail(), refreshToken, now);
     }
 
@@ -76,30 +80,10 @@ public class SessionService {
         return tokens(session, email, nextRefreshToken, now);
     }
 
-    @Transactional(readOnly = true)
-    public List<SessionResponse> activeSessions(long userId, UUID currentId) {
-        return sessionRepository.findByUser_IdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
-            userId, Instant.now()).stream().map(s ->
-            new SessionResponse(s.getId(), s.getCreatedAt(), s.getExpiresAt(), s.getId().equals(currentId))
-        ).toList();
-    }
-
     @Transactional
     public void logout(long userId, UUID sessionId) {
         sessionRepository.findByIdAndUser_Id(sessionId, userId)
             .ifPresent(session -> session.revoke(Instant.now()));
-    }
-
-    @Transactional
-    public void revoke(long userId, UUID sessionId) {
-        var session = sessionRepository.findByIdAndUser_Id(sessionId, userId)
-            .orElseThrow(SessionNotFoundException::new);
-        session.revoke(Instant.now());
-    }
-
-    @Transactional
-    public void logoutAll(long userId) {
-        sessionRepository.revokeAllForUser(userId, Instant.now());
     }
 
     private TokenResponse tokens(AuthSession session, String email, String refreshToken, Instant now) {
@@ -116,7 +100,7 @@ public class SessionService {
             JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
 
         return new TokenResponse("Bearer", jwt, ACCESS_LIFETIME.toSeconds(), refreshToken,
-            new PlayerProfile(user.getId(), user.getNickname(), email, user.getCreatedAt()));
+            new PlayerProfile(user.getId(), user.getNickname(), email, user.getAvatarId(), user.getCreatedAt()));
     }
 
     private static String newRefreshToken() {

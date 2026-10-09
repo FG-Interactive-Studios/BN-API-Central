@@ -3,7 +3,6 @@ package com.FGInteractive.BatalhaNaval.auth.repository;
 import com.FGInteractive.BatalhaNaval.auth.model.AuthSession;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.*;
@@ -19,10 +18,7 @@ public interface AuthSessionRepository extends JpaRepository<AuthSession, UUID> 
 
     Optional<AuthSession> findByIdAndUser_Id(UUID id, Long userId);
 
-    List<AuthSession> findByUser_IdAndRevokedAtIsNullAndExpiresAtAfterOrderByCreatedAtDesc(
-        Long userId, Instant now);
-
-    @Modifying
+    @Modifying(flushAutomatically = true)
     @Query("update AuthSession s set s.revokedAt = :now where s.user.id = :userId and s.revokedAt is null")
     int revokeAllForUser(@Param("userId") Long userId, @Param("now") Instant now);
 }

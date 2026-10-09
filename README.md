@@ -108,10 +108,16 @@ logout e revogação imediatos.
 Endpoints públicos: `GET /api/health`, `POST /api/auth/register`,
 `POST /api/auth/login` e `POST /api/auth/refresh`.
 
-Endpoints autenticados: `GET /api/users/me`, `GET /api/auth/sessions`,
-`POST /api/auth/logout`, `POST /api/auth/logout-all` e
-`DELETE /api/auth/sessions/{sessionId}`. As demais rotas também exigem
+O perfil público `GET /api/users/{id}` também aceita acesso anônimo (apenas
+IDs numéricos). Os demais endpoints protegidos incluem `GET /api/users/me`,
+`PATCH /api/users/me` e `POST /api/auth/logout`, com
 `Authorization: Bearer <accessToken>`.
+
+A API mantém **uma única sessão ativa por jogador**. Um novo login revoga a
+sessão anterior imediatamente, inclusive em outro dispositivo. Por isso a
+listagem e a revogação de múltiplas sessões foram removidas. Para exibição,
+o cliente deve ler dados atualizados do perfil privado ou público, não claims
+de nickname potencialmente desatualizados no JWT.
 
 **Desenvolvimento local:** o launch `BN API - Local DB (Debug)` ativa
 `SPRING_PROFILES_ACTIVE=local` e gera automaticamente uma chave JWT aleatória
@@ -136,7 +142,8 @@ para carregar o perfil atual do próprio jogador. **Dados de outros jogadores
 e permissões são sempre conferidos no servidor**.
 
 Contrato e recomendações para o frontend:
-[Autenticação e sessões](docs/api/auth-sessions.md).
+[Autenticação e sessões](docs/api/auth-sessions.md) e
+[Perfis públicos/privados](docs/api/player-profiles.md).
 
 **Modelo para produção:** use o arquivo [`.env.production.example`](.env.production.example)
 como base, preencha os valores reais **fora do Git** e siga as

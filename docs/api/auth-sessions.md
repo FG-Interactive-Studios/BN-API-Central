@@ -1,8 +1,9 @@
 # Authentication, tokens and session management
 
 The public endpoints are `POST /api/auth/register`, `POST /api/auth/login`,
-`POST /api/auth/refresh` and `GET /api/health`. All other REST paths require
-an authenticated Bearer access token. Access is never granted from a client-provided user ID.
+`POST /api/auth/refresh`, `GET /api/health` and the numeric public player
+profile `GET /api/users/{id}`. All other REST paths require an authenticated
+Bearer access token. Access is never granted from a client-provided user ID.
 
 ## Login
 
@@ -43,11 +44,19 @@ using 32 secure random bytes, is stored only as a SHA-256 hash and expires after
 Send `Authorization: Bearer <accessToken>` for:
 
 - `GET /api/users/me` — own current profile; no ID in request.
-- `GET /api/auth/sessions` — only active sessions of the authenticated player.
-- `POST /api/auth/logout` — revoke current session (204).
-- `POST /api/auth/logout-all` — revoke all own sessions (204).
-- `DELETE /api/auth/sessions/{sessionId}` — revoke a session belonging to
-  the authenticated player (204 or 404). Sessions of other players are never returned.
+- `PATCH /api/users/me` — update own nickname/avatar by JWT identity.
+- `POST /api/auth/logout` — revoke the only active session (204).
+
+A new login automatically revokes any previous session belonging to the same
+player, including sessions from another device. Old JWTs and refresh tokens
+are rejected immediately, and the PostgreSQL partial unique index guarantees
+at most one unrevoked session per account. The former multi-session endpoints
+(`GET /api/auth/sessions`, `POST /api/auth/logout-all`,
+`DELETE /api/auth/sessions/{sessionId}`) were removed.
+
+Public `GET /api/users/{id}` returns only id, nickname, avatarId and
+createdAt; it does **not** reveal the email, credentials or session history.
+See [profile API](player-profiles.md).
 
 A revoked session invalidates its access JWT immediately. Unauthenticated or
 invalid Bearer requests receive 401 from Spring Security. Authorization for
