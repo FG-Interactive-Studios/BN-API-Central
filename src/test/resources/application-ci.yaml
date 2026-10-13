@@ -7,3 +7,5 @@ spring:
 auth:
   jwt:
     secret-base64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+  admin-bootstrap:
+    enabled: false

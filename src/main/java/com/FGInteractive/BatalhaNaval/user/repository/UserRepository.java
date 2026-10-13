@@ -6,5 +6,6 @@ import com.FGInteractive.BatalhaNaval.user.model.User;
 public interface UserRepository extends JpaRepository<User,Long> {
     boolean existsByNicknameIgnoreCase(String nickname);
     boolean existsByIdAndAdminTrue(Long id);
+    boolean existsByAdminTrue();
     boolean existsByNicknameIgnoreCaseAndIdNot(String nickname, Long id);
 }
