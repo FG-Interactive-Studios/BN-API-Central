@@ -28,14 +28,17 @@ public record GameModeDefinition(
             || !(rules.get(RuleSlot.TURN) instanceof TurnRule)
             || !(rules.get(RuleSlot.VICTORY) instanceof VictoryRule))
             throw new IllegalArgumentException("Combat mode needs executable attack, turn and victory rules");
+        if (!placement.supports(geometry) || placement.directions().isEmpty())
+            throw new IllegalArgumentException("Placement rule does not support the board geometry");
         if (fleet.occupiedCells() > geometry.cells().size())
             throw new IllegalArgumentException("Fleet exceeds playable board capacity");
     }
 
     public ModeSummary summary() {
         return new ModeSummary(id, name, new ModeSummary.GeometryInfo(
-            geometry.kind(), geometry.rows(), geometry.columns(), geometry.cells()),
-            fleet.ships(), placement.id(), rules.entrySet().stream()
+            geometry.kind(), geometry.rows(), geometry.columns(), geometry.cells(),
+            geometry.tiles()),
+            fleet.ships(), placement.id(), placement.directions(), rules.entrySet().stream()
                 .collect(java.util.stream.Collectors.toUnmodifiableMap(
                     e -> e.getKey().name(), e -> e.getValue().id())));
     }

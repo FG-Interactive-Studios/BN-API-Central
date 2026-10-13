@@ -18,13 +18,17 @@ confirmação, jamais os navios ou suas coordenadas.
 O modo é fixado no momento em que o anfitrião cria a sala:
 `POST /api/matchmaking/lobbies` com corpo opcional
 `{"modeId":"classic"}`, `{"modeId":"quick"}` ou
-`{"modeId":"triangular"}`. O padrão é `classic`.
+`{"modeId":"triangular"}` ou `{"modeId":"triangle-tiles"}`.
+O padrão é `classic`.
 `GET /api/game-modes` lista as definições públicas disponíveis.
 Veja [arquitetura e catálogo](../architecture/composable-game-modes.md).
 
 A frota e as células válidas variam conforme o modo; o cliente deve usar
 `mode.geometry.cells` e `mode.fleet` retornados pela API, não
 suposições sobre tabuleiro 10×10 ou cinco embarcações.
+Use também `mode.geometry.tiles` para renderizar o formato real das
+células e `mode.placementDirections` para as orientações admitidas.
+Consulte [geometrias de tabuleiro](../architecture/board-topologies.md).
 
 ## Frota e coordenadas
 

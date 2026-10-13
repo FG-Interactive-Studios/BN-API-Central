@@ -170,6 +170,13 @@ A sala privada entra em `PREPARING` quando os dois jogadores marcam
 prontidão. No novo domínio `match`, cada um posiciona sua própria frota
 definida pelo modo da sala: Clássico 10×10, Rápido 8×8 ou Triangular,
 com frota variável, posicionamento manual ou geração aleatória.
+Também existe o modo `triangle-tiles`, cujas casas são **triângulos
+equiláteros reais** com vizinhança por aresta e eixos de posicionamento
+próprios. Geometria e polígonos de cada célula são definidos pelo servidor,
+não reconstruídos ou inventados no frontend.
+O modo `hexagons` acrescenta 61 casas hexagonais, com navios retos
+verticais ou diagonais.
+Veja [geometrias e renderização](docs/architecture/board-topologies.md).
 A confirmação bloqueia edições; o outro jogador recebe apenas
 indicadores de posicionamento/prontidão, jamais coordenadas secretas.
 

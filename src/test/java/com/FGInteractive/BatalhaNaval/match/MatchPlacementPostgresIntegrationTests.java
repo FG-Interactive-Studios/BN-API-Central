@@ -168,7 +168,9 @@ class MatchPlacementPostgresIntegrationTests {
             String guest=state(b);
             assertEquals(0, ((Number)JsonPath.read(guest,"$.yourShips.length()")).intValue());
             assertEquals(true, JsonPath.read(guest,"$.opponentPlaced"));
-            assertFalse(guest.contains("HORIZONTAL"));
+            // Legal orientations are public mode metadata; only yourShips is private.
+            assertEquals(2,((Number)JsonPath.read(guest,
+                "$.mode.placementDirections.length()")).intValue());
             // Ship identifiers are public mode metadata; only private positions are secret.
             assertFalse(guest.contains("\"orientation\""));
 
@@ -257,7 +259,9 @@ class MatchPlacementPostgresIntegrationTests {
                 assertEquals(5, ((Number)JsonPath.read(eventForHost,"$.data.yourShips.length()")).intValue());
                 assertEquals(0, ((Number)JsonPath.read(eventForGuest,"$.data.yourShips.length()")).intValue());
                 assertEquals(true, JsonPath.read(eventForGuest,"$.data.opponentPlaced"));
-                assertFalse(eventForGuest.contains("HORIZONTAL"));
+                // The mode's legal directions may be disclosed; the rival's fleet may not.
+                assertEquals(0,((Number)JsonPath.read(eventForGuest,
+                    "$.data.yourShips.length()")).intValue());
                 random(guest);
                 assertEquals(5, ((Number)JsonPath.read(b.listener.nextType("PREPARATION_UPDATED"),
                     "$.data.yourShips.length()")).intValue());

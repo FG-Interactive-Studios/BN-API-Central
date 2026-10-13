@@ -26,14 +26,17 @@ slots de combate, para não aceitar modos incapazes de executar tiros.
 | --- | --- | --- | --- |
 | `classic` | Retangular 10×10 | 5, 4, 3, 3, 2 | Posicionamento linear |
 | `quick` | Retangular 8×8 | 4, 3, 2 | Posicionamento linear |
-| `triangular` | Máscara triangular de 10 linhas (55 células) | 4, 3, 2 | Posicionamento linear |
+| `triangular` | Máscara triangular de 10 linhas (55 quadrados) | 4, 3, 2 | Posicionamento linear |
+| `triangle-tiles` | Tesselação triangular de 8 linhas (64 triângulos) | 4, 3, 2 | Caminhos por arestas em três eixos |
+| `hexagons` | Campo hexagonal de raio 4, 61 células | 4, 3, 2 | Vertical e duas diagonais |
 
-O modo `triangular` tem **células quadradas formando uma máscara
-triangular**, e não ladrilhos triangulares. Um tabuleiro de ladrilhos
-triangulares pode ter uma implementação distinta de `BoardGeometry`
-quando suas regras de vizinhança forem definidas.
+O modo `triangular` continua com **células quadradas formando uma máscara**.
+O modo `triangle-tiles` contém **triângulos reais**, vizinhança por
+aresta e caminhos de posicionamento próprios. As implementações coexistem
+para manter compatibilidade.
+Detalhes: [topologias e contrato de renderização](board-topologies.md).
 
-Os três modos compartilham as mesmas políticas de combate executáveis
+Os cinco modos compartilham as mesmas políticas de combate executáveis
 (e ainda declaram a ausência de movimento e poderes):
 `MOVEMENT=stationary`, `ATTACK=standard-shot`,
 `TURN=alternating`, `VICTORY=all-ships-sunk`,
@@ -44,7 +47,9 @@ Os três modos compartilham as mesmas políticas de combate executáveis
 `GET /api/game-modes` — exige JWT, retorna array de definições públicas
 com `id`, `name`, `geometry`, `fleet`, `placement` e `mechanics`.
 
-O campo `geometry` fornece `kind`, `rows`, `columns` e `cells`.
+O campo `geometry` fornece `kind`, `rows`, `columns`, `cells`
+e `tiles` (polígonos públicos de cada célula). O campo
+`placementDirections` lista as orientações válidas para o modo.
 `cells` são coordenadas **públicas das casas válidas**, não posições secretas
 de navios. Isso permite ao frontend renderizar até geometrias irregulares.
 

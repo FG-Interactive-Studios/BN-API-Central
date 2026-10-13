@@ -65,7 +65,7 @@ public final class Board {
                 Collections.shuffle(candidateOrigins, RANDOM);
                 boolean found = false;
                 for (Cell start : candidateOrigins) {
-                    List<Orientation> orientations = new ArrayList<>(List.of(Orientation.values()));
+                    List<Orientation> orientations = new ArrayList<>(mode.placement().directions());
                     Collections.shuffle(orientations, RANDOM);
                     for (Orientation orientation : orientations) {
                         ShipPlacement placement = new ShipPlacement(
