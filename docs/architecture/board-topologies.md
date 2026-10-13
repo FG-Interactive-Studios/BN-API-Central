@@ -8,6 +8,8 @@
 | `quick` | `RECTANGULAR` 8×8 | 64 quadrados | HORIZONTAL / VERTICAL |
 | `triangular` | `TRIANGULAR_MASK`, máscara de quadrados | 55 quadrados | HORIZONTAL / VERTICAL |
 | `triangle-tiles` | `TRIANGULAR_TILES`, tesselação equilátera | 64 **triângulos** | TRI_RIGHT / TRI_DOWN_LEFT / TRI_DOWN_RIGHT |
+| `hexagons` | `HEXAGONAL_TILES`, raio 4 | 61 **hexágonos** | HEX_VERTICAL / HEX_DIAGONAL_UP / HEX_DIAGONAL_DOWN |
+| `octagons` | `OCTAGONAL_TILES`, 8×8 | 64 **octógonos** | HORIZONTAL / VERTICAL / DIAGONAL_UP / DIAGONAL_DOWN |
 
 O modo antigo `triangular` **não foi alterado**: suas 55 casas quadradas
 continuam organizadas numa máscara em forma de triângulo. O novo modo
@@ -53,6 +55,55 @@ O gerador de frotas automáticas usa
 `mode.placement.directions()` e `mode.geometry.cells()`, em vez
 de assumir todas as orientações de um enum ou um tabuleiro 10×10.
 
+## Hexágonos regulares e octógonos regulares
+
+### `hexagons`: 61 casas num tabuleiro hexagonal
+
+O tabuleiro possui raio 4 e **61 hexágonos individuais clicáveis,
+posicionáveis e atacáveis**, com seis vizinhos por aresta para células
+internas. Utiliza coordenadas axiais deslocadas (`row,col`), não
+índices presumidamente retangulares. O posicionamento linear tem três
+eixos: `HEX_VERTICAL`, `HEX_DIAGONAL_UP` e
+`HEX_DIAGONAL_DOWN`. Todas as casas de um navio compartilham arestas
+sucessivas e seu sprite pode ser reto.
+
+### `octagons`: 64 casas num tabuleiro 8×8
+
+Octógonos **regulares não se encaixam sozinhos no plano**; os pequenos
+vazios em forma de quadrados girados/losangos entre quatro octógonos
+não são jogáveis. Apenas os **64 octógonos** são casas e alvos de tiros.
+
+Os eixos de posicionamento são `HORIZONTAL`, `VERTICAL`,
+`DIAGONAL_UP` e `DIAGONAL_DOWN`. No caso diagonal, o sprite segue
+uma linha reta **entre os centros** dos octógonos, atravessando os
+vazios decorativos. Essas lacunas não recebem tiros nem contam para
+o comprimento do navio. `BoardGeometry.neighbors` permanece restrito
+a vizinhanças **por aresta** (4), mesmo que o posicionamento diagonal
+seja permitido.
+
+### Sprites, casas e segurança
+
+O backend expõe `mode.geometry.tiles` com os polígonos das casas e
+`mode.placementDirections` com os eixos autorizados. O cliente deve
+desenhar cada polígono, reconhecer o clique **no interior de uma casa**
+e mandar só a coordenada `row,col` do triângulo/hexágono/octógono.
+Vértices, arestas e espaços entre octógonos **não são casas extras**.
+
+A API guarda o footprint real das frotas e valida tiro e colisão;
+renderização/escala/âncora do sprite são responsabilidade de um futuro
+renderer do frontend. Não foi adicionado contrato de sprite
+(`shipVisual`, imagem, textura etc.) nesta etapa.
+
+Selecione os novos modos criando sala com:
+
+```json
+{"modeId":"hexagons"}
+```
+
+```json
+{"modeId":"octagons"}
+```
+
 ## Contrato da API para desenhar o tabuleiro
 
 O campo **público** `mode.geometry`, em
@@ -78,7 +129,9 @@ O exemplo contém apenas uma parte das listas. O servidor retorna
 **todas** as 64 células e seus polígonos. `tiles[].vertices` contém
 coordenadas 2D locais do tabuleiro, na ordem de contorno, adequadas
 para desenhar um SVG `polygon`. Retangulares e a máscara antiga usam
-`shape="SQUARE"` com quatro vértices; os triângulos têm três vértices.
+`shape="SQUARE"` com quatro vértices; triângulos possuem três,
+hexágonos seis e octógonos oito. Os nomes são `TRIANGLE_UP`,
+`TRIANGLE_DOWN`, `HEXAGON` e `OCTAGON`.
 Os clientes devem calcular os limites do desenho a partir dos vértices,
 renderizar cada polígono e enviar seu `cell.row/col` quando clicado.
 Não usar `geometry.columns` como prova de que todas as posições

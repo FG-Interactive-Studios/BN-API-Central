@@ -174,6 +174,10 @@ Também existe o modo `triangle-tiles`, cujas casas são **triângulos
 equiláteros reais** com vizinhança por aresta e eixos de posicionamento
 próprios. Geometria e polígonos de cada célula são definidos pelo servidor,
 não reconstruídos ou inventados no frontend.
+Dois novos modos também estão disponíveis: `hexagons` (61 casas,
+navios verticais ou diagonais) e `octagons` (64 casas, navios
+horizontais, verticais ou diagonais). Os octógonos deixam pequenos
+espaços decorativos que não contam como alvos.
 Veja [geometrias e renderização](docs/architecture/board-topologies.md).
 A confirmação bloqueia edições; o outro jogador recebe apenas
 indicadores de posicionamento/prontidão, jamais coordenadas secretas.
