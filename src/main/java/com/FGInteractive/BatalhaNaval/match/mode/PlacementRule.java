@@ -1,12 +1,19 @@
 package com.FGInteractive.BatalhaNaval.match.mode;
 import com.FGInteractive.BatalhaNaval.match.dto.PlaceFleetRequest.ShipPlacement;
 import com.FGInteractive.BatalhaNaval.match.model.Cell;
+import com.FGInteractive.BatalhaNaval.match.model.Orientation;
 import java.util.List;
 import java.util.Set;
 
 /** Executable, swappable rule for validating individual ship footprints. */
 public interface PlacementRule {
     String id();
+    /** Exposed as client configuration and used by server-side random placement. */
+    default List<Orientation> directions() {
+        return List.of(Orientation.HORIZONTAL, Orientation.VERTICAL);
+    }
+    /** Fail fast when registering a mode with incompatible geometry/rules. */
+    default boolean supports(BoardGeometry geometry) { return true; }
     List<Cell> footprint(ShipPlacement placement, ShipDefinition ship, BoardGeometry geometry);
     default void validateAgainstExisting(List<Cell> footprint, Set<Cell> occupied) {
         if (footprint.stream().anyMatch(occupied::contains))

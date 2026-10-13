@@ -8,9 +8,13 @@ import java.util.List;
 /** Horizontal or vertical straight ships, including on irregular playable masks. */
 public final class LinearPlacementRule implements PlacementRule {
     @Override public String id() { return "linear"; }
+    @Override public boolean supports(BoardGeometry geometry) {
+        return !(geometry instanceof TriangularTileGeometry);
+    }
     @Override public List<Cell> footprint(ShipPlacement placement, ShipDefinition ship,
                                            BoardGeometry geometry) {
-        if (placement == null || placement.orientation() == null
+        if (!supports(geometry) || placement == null
+            || !directions().contains(placement.orientation())
             || placement.row() == null || placement.col() == null)
             throw new IllegalArgumentException("Ship coordinates and orientation are required");
         List<Cell> cells = new ArrayList<>(ship.length());

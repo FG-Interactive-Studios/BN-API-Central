@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class GameModePresets {
     private static final PlacementRule LINEAR = new LinearPlacementRule();
+    private static final PlacementRule TRIANGLE = new TriangularEdgePlacementRule();
 
     private static Map<RuleSlot, RuleModule> classicMechanics() {
         return Map.of(
@@ -36,6 +37,18 @@ public class GameModePresets {
                 new ShipDefinition("BATTLESHIP",4), new ShipDefinition("CRUISER",3),
                 new ShipDefinition("DESTROYER",2))), LINEAR, classicMechanics());
     }
+    /**
+     * Real equilateral triangle tiles, each a distinct hittable cell.
+     * The older "triangular" mode is deliberately preserved as a square mask.
+     */
+    public static GameModeDefinition triangleTiles() {
+        return new GameModeDefinition("triangle-tiles", "Triangulo de celulas",
+            new TriangularTileGeometry(8),
+            new FleetDefinition(List.of(
+                new ShipDefinition("BATTLESHIP",4), new ShipDefinition("CRUISER",3),
+                new ShipDefinition("DESTROYER",2))), TRIANGLE, classicMechanics());
+    }
+    @Bean public GameModeDefinition triangleTilesGameMode() { return triangleTiles(); }
     @Bean public GameModeDefinition triangularGameMode() { return triangular(); }
     @Bean public GameModeDefinition classicGameMode() { return classic(); }
     @Bean public GameModeDefinition quickGameMode() { return quick(); }
