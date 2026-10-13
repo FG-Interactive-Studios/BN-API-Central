@@ -202,12 +202,16 @@ class GameModesPostgresIntegrationTests {
             mvc.perform(post("/api/matches/me/shots")
                 .header("Authorization","Bearer "+host.jwt)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\\"row\\":1,\\"col\\":3}"))
+                .content("""
+                    {"row":1,"col":3}
+                    """)
                 .andExpect(status().isBadRequest());
             mvc.perform(post("/api/matches/me/shots")
                 .header("Authorization","Bearer "+host.jwt)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\\"row\\":0,\\"col\\":0}"))
+                .content("""
+                    {"row":0,"col":0}
+                    """)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.shotsFired.length()").value(1))
                 .andExpect(jsonPath("$.mode.geometry.kind").value("TRIANGULAR_TILES"));
