@@ -108,7 +108,8 @@ class AdminGameModesPostgresIntegrationTests {
         assertNotNull(JsonPath.read(disabled,"$.updatedAt"));
         // Repeated disable must be idempotent.
         String twice=change(admin,"quick","{\"enabled\":false}",200);
-        assertEquals(JsonPath.read(disabled,"$.updatedAt"),JsonPath.read(twice,"$.updatedAt"));
+        assertEquals((String)JsonPath.read(disabled,"$.updatedAt"),
+            (String)JsonPath.read(twice,"$.updatedAt"));
         mvc.perform(get("/api/game-modes")
             .header("Authorization","Bearer "+host.jwt))
             .andExpect(status().isOk())
