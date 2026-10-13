@@ -192,6 +192,19 @@ extensões futuras para tiro, movimento, poderes e debuffs. O motor de
 batalha já executa ataque, alternância de turnos e vitória; **movimento,
 poderes e debuffs ainda não**.
 
+## Disponibilidade administrativa dos modos
+
+A API passa a persistir no PostgreSQL se cada modo registrado está
+**habilitado ou desabilitado para novas salas**. `GET /api/game-modes`
+lista apenas opções ativas; administradores autorizados podem consultar
+e alterar estados em `/api/admin/game-modes`, sem interromper partidas
+já existentes. A autorização administrativa é lida do banco
+(`users.is_admin`); o registro público não concede esse privilégio.
+
+Veja [gestão administrativa dos modos](docs/api/game-mode-administration.md)
+para setup, contratos e segurança. Esta entrega prepara a API para o
+futuro painel frontend; a tela administrativa ainda não está implementada.
+
 ## Motor de batalha
 
 Após confirmação das duas frotas, a sala passa automaticamente para
