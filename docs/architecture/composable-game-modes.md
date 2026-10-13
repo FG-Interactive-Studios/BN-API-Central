@@ -29,7 +29,6 @@ slots de combate, para não aceitar modos incapazes de executar tiros.
 | `triangular` | Máscara triangular de 10 linhas (55 quadrados) | 4, 3, 2 | Posicionamento linear |
 | `triangle-tiles` | Tesselação triangular de 8 linhas (64 triângulos) | 4, 3, 2 | Caminhos por arestas em três eixos |
 | `hexagons` | Campo hexagonal de raio 4, 61 células | 4, 3, 2 | Vertical e duas diagonais |
-| `octagons` | 64 octógonos regulares, 8×8 | 4, 3, 2 | Horizontal, vertical e duas diagonais |
 
 O modo `triangular` continua com **células quadradas formando uma máscara**.
 O modo `triangle-tiles` contém **triângulos reais**, vizinhança por
@@ -37,7 +36,7 @@ aresta e caminhos de posicionamento próprios. As implementações coexistem
 para manter compatibilidade.
 Detalhes: [topologias e contrato de renderização](board-topologies.md).
 
-Os seis modos compartilham as mesmas políticas de combate executáveis
+Os cinco modos compartilham as mesmas políticas de combate executáveis
 (e ainda declaram a ausência de movimento e poderes):
 `MOVEMENT=stationary`, `ATTACK=standard-shot`,
 `TURN=alternating`, `VICTORY=all-ships-sunk`,

@@ -8,7 +8,6 @@ public class GameModePresets {
     private static final PlacementRule LINEAR = new LinearPlacementRule();
     private static final PlacementRule TRIANGLE = new TriangularEdgePlacementRule();
     private static final PlacementRule HEXAGON = new HexagonalPlacementRule();
-    private static final PlacementRule OCTAGON = new OctagonalPlacementRule();
 
     private static Map<RuleSlot, RuleModule> classicMechanics() {
         return Map.of(
@@ -59,20 +58,7 @@ public class GameModePresets {
             HEXAGON, classicMechanics());
     }
 
-    /**
-     * Octagons only: four sides and four diagonals for ship placement.
-     * The small diamond gaps between regular octagons are not targetable.
-     */
-    public static GameModeDefinition octagons() {
-        return new GameModeDefinition("octagons", "Octogonal",
-            new OctagonalGeometry(8,8),
-            new FleetDefinition(List.of(new ShipDefinition("BATTLESHIP",4),
-                new ShipDefinition("CRUISER",3),new ShipDefinition("DESTROYER",2))),
-            OCTAGON, classicMechanics());
-    }
-
     @Bean public GameModeDefinition hexagonsGameMode() { return hexagons(); }
-    @Bean public GameModeDefinition octagonsGameMode() { return octagons(); }
     @Bean public GameModeDefinition triangleTilesGameMode() { return triangleTiles(); }
     @Bean public GameModeDefinition triangularGameMode() { return triangular(); }
     @Bean public GameModeDefinition classicGameMode() { return classic(); }
