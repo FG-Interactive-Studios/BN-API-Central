@@ -115,7 +115,8 @@ class GameModesPostgresIntegrationTests {
             assertEquals(3,((Number)JsonPath.read(placed,"$.yourShips.length()")).intValue());
             assertTrue(state(b).contains("\"opponentPlaced\":true"));
             assertEquals(0,((Number)JsonPath.read(state(b),"$.yourShips.length()")).intValue());
-            assertFalse(state(b).contains("HORIZONTAL"));
+            assertEquals(2,((Number)JsonPath.read(state(b),
+                "$.mode.placementDirections.length()")).intValue());
 
             // A classic-only type cannot be smuggled into the quick fleet.
             mvc.perform(put("/api/matches/me/placement")
