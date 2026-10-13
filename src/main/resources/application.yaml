@@ -16,6 +16,11 @@ spring:
 auth:
   jwt:
     secret-base64: ${AUTH_JWT_SECRET_B64:}
+  admin-bootstrap:
+    enabled: ${ADMIN_BOOTSTRAP_ENABLED:true}
+    # Empty defaults to ${user.home}/.battleship/bootstrap-admin-credentials.txt.
+    # Keep the file outside the repository, in a protected account directory.
+    credentials-file: ${ADMIN_BOOTSTRAP_CREDENTIALS_FILE:}
 
 server:
   port: ${PORT:8080}

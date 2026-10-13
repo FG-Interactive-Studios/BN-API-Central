@@ -201,6 +201,21 @@ e alterar estados em `/api/admin/game-modes`, sem interromper partidas
 já existentes. A autorização administrativa é lida do banco
 (`users.is_admin`); o registro público não concede esse privilégio.
 
+**Bootstrap de administrador:** quando não há nenhum usuário administrador
+no banco, a API cria automaticamente uma conta aleatória na inicialização
+(com senha forte e hash BCrypt). O e-mail e a senha são gravados **uma
+única vez em arquivo privado** no computador que executa a API, por padrão
+`~/.battleship/bootstrap-admin-credentials.txt`. O log apresenta **somente
+o caminho**, nunca a senha. Após o primeiro login, altere a senha
+e exclua o arquivo com segurança.
+
+Para mudar o destino: `ADMIN_BOOTSTRAP_CREDENTIALS_FILE`.
+Para impedir a geração automática: `ADMIN_BOOTSTRAP_ENABLED=false`.
+Se o arquivo antigo ainda existir após um reset do banco, o bootstrap
+recusa sobrescrevê-lo; verifique o estado do banco e remova/mova o
+arquivo manualmente antes de tentar criar outro admin. O bootstrap
+fica desativado na CI.
+
 Veja [gestão administrativa dos modos](docs/api/game-mode-administration.md)
 para setup, contratos e segurança. Esta entrega prepara a API para o
 futuro painel frontend; a tela administrativa ainda não está implementada.

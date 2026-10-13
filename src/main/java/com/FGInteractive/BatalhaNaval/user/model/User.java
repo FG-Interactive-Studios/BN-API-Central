@@ -20,6 +20,8 @@ public class User {
     public User(String nickname,Instant createdAt) { this.nickname=nickname; this.createdAt=createdAt; }
     public Long getId(){return id;}
     public boolean isAdmin(){return admin;}
+    /** Only used by the trusted, one-time startup bootstrap service. */
+    public void markInitialAdministrator(){ this.admin=true; }
     public String getNickname(){return nickname;}
     public String getAvatarId(){return avatarId;}
     public void setNickname(String nickname){this.nickname=nickname;}

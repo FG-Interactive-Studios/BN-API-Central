@@ -16,8 +16,33 @@ Migration Flyway `V6__game_mode_availability.sql`:
 - **Novos modos registrados em Java**, sem linha nesta tabela,
   aparecem desabilitados até ativação administrativa.
 
+**Bootstrap automático do primeiro admin:** no primeiro start de uma
+instância com banco migrado e **sem admins**, a aplicação gera um
+nickname e e-mail aleatórios e uma senha criptograficamente forte,
+persiste o hash BCrypt e grava as credenciais em um arquivo legível
+somente pelo usuário do sistema (permissão `0600` em Linux/POSIX).
+
+Destino padrão: `~/.battleship/bootstrap-admin-credentials.txt`
+(no Windows, sob a pasta do perfil do usuário que executa a API).
+O arquivo é criado uma única vez, sem sobrescrita. A aplicação
+**não imprime a senha em logs**; informa apenas o caminho absoluto.
+Entre no painel usando e-mail/senha do arquivo, altere a senha
+em `POST /api/auth/change-password` e apague o arquivo com segurança.
+Proteja o acesso ao servidor e mantenha o caminho fora do repositório.
+
+Configurações:
+- `ADMIN_BOOTSTRAP_ENABLED=true` (padrão; CI usa `false`).
+- `ADMIN_BOOTSTRAP_CREDENTIALS_FILE=/caminho/protegido/credenciais.txt`
+  (opcional; recomendado sob o diretório privado do usuário do processo).
+
+Com admin existente, nenhuma nova conta ou arquivo é criado.
+**Se o banco for resetado e ainda existir um arquivo antigo**, o bootstrap
+recusa sobrescrevê-lo e impede a inicialização; confira o estado do banco
+e arquive/remova o arquivo antigo **antes** de reiniciar. Não mantenha
+credenciais bootstrap em logs, backups públicos ou imagens Docker.
+
 **Não existe rota pública para conceder permissões administrativas.**
-Um operador confiável promove explicitamente a conta já cadastrada:
+Operadores também podem promover explicitamente uma conta já cadastrada:
 
 ```sql
 UPDATE users SET is_admin = TRUE WHERE id = <ID_DO_ADMINISTRADOR>;
