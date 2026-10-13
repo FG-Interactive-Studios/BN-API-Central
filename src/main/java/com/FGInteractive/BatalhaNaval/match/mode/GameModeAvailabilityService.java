@@ -2,6 +2,7 @@ package com.FGInteractive.BatalhaNaval.match.mode;
 
 import com.FGInteractive.BatalhaNaval.user.repository.UserRepository;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.function.Function;
 import org.springframework.http.HttpStatus;
@@ -93,7 +94,8 @@ public class GameModeAvailabilityService {
             }
 
             GameModeSetting saved = settings.saveAndFlush(
-                new GameModeSetting(mode.id(), value, Instant.now(), actorId));
+                new GameModeSetting(mode.id(), value,
+                    Instant.now().truncatedTo(ChronoUnit.MICROS), actorId));
             return response(mode.summary(), saved);
         }
     }
