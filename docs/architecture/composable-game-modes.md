@@ -135,3 +135,11 @@ Estado em memória, instância única, como lobby e preparação anteriores.
 Os dados de modo na sala e na rodada são snapshots imutáveis, selecionados
 no servidor; abandonar uma sala descarta a rodada e seus navios. Sem nova
 migration, framework, dependência, motor de scripts ou banco adicional.
+
+## Disponibilidade administrada no banco
+
+O `GameModeRegistry` permanece como catálogo de implementações Java;
+`GameModeAvailabilityService` restringe **somente novas salas** de
+acordo com configurações persistidas em `game_mode_settings`.
+O cadastro/alteração de regras e geometrias via frontend continua fora
+deste escopo. Veja o [contrato de gerenciamento](../api/game-mode-administration.md).
