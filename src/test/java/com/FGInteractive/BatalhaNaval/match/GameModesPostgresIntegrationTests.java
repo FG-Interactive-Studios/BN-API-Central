@@ -74,7 +74,8 @@ class GameModesPostgresIntegrationTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[?(@.id == 'classic')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.id == 'quick')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'triangular')]").isNotEmpty());
+            .andExpect(jsonPath("$[?(@.id == 'triangular')]").isNotEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'triangle-tiles')]").isNotEmpty());
     }
 
     @Test void defaultClassicIsBackwardCompatibleAndUnknownModeCannotAllocateRoom() throws Exception {
@@ -156,4 +157,65 @@ class GameModesPostgresIntegrationTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.mode.id").value("triangular"));
         } finally { leave(a); }
     }
+    @Test void trueTriangularTilesCanBeChosenPlacedAndPlayedThroughJwtOnly() throws Exception {
+        Player host=player(), guest=player();
+        try {
+            prepare(host, guest, "triangle-tiles");
+            String hostView=state(host);
+            assertEquals("TRIANGULAR_TILES", JsonPath.read(hostView,"$.mode.geometry.kind"));
+            assertEquals(64, ((Number)JsonPath.read(hostView,
+                "$.mode.geometry.cells.length()")).intValue());
+            assertEquals(64, ((Number)JsonPath.read(hostView,
+                "$.mode.geometry.tiles.length()")).intValue());
+            assertEquals("TRIANGLE_UP", JsonPath.read(hostView,
+                "$.mode.geometry.tiles[0].shape"));
+            assertEquals("TRI_RIGHT", JsonPath.read(hostView,
+                "$.mode.placementDirections[0]"));
+            String fleet="""
+                {"ships":[
+                  {"type":"BATTLESHIP","row":5,"col":0,"orientation":"TRI_RIGHT"},
+                  {"type":"CRUISER","row":1,"col":0,"orientation":"TRI_DOWN_RIGHT"},
+                  {"type":"DESTROYER","row":3,"col":0,"orientation":"TRI_DOWN_LEFT"}
+                ]}
+                """;
+            mvc.perform(put("/api/matches/me/placement")
+                .header("Authorization","Bearer "+host.jwt)
+                .contentType(MediaType.APPLICATION_JSON).content(fleet))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.yourShips.length()").value(3));
+            assertEquals(0,((Number)JsonPath.read(state(guest),
+                "$.yourShips.length()")).intValue());
+            mvc.perform(put("/api/matches/me/placement")
+                .header("Authorization","Bearer "+guest.jwt)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(fleet.replace("TRI_RIGHT","HORIZONTAL")))
+                .andExpect(status().isBadRequest());
+            mvc.perform(post("/api/matches/me/placement/random")
+                .header("Authorization","Bearer "+guest.jwt))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.yourShips.length()").value(3));
+            for (Player player : new Player[]{host,guest}) {
+                mvc.perform(post("/api/matches/me/placement/confirm")
+                    .header("Authorization","Bearer "+player.jwt))
+                    .andExpect(status().isOk());
+            }
+            mvc.perform(post("/api/matches/me/shots")
+                .header("Authorization","Bearer "+host.jwt)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\\"row\\":1,\\"col\\":3}"))
+                .andExpect(status().isBadRequest());
+            mvc.perform(post("/api/matches/me/shots")
+                .header("Authorization","Bearer "+host.jwt)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\\"row\\":0,\\"col\\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.shotsFired.length()").value(1))
+                .andExpect(jsonPath("$.mode.geometry.kind").value("TRIANGULAR_TILES"));
+        } finally {
+            leave(host);
+            leave(host);
+            leave(guest);
+        }
+    }
+
 }
