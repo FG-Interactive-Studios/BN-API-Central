@@ -4,6 +4,8 @@ import com.FGInteractive.BatalhaNaval.match.mode.ModeSummary;
 import com.FGInteractive.BatalhaNaval.match.model.ShotRecord;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
+import java.util.Map;
 
 /** Per-player perspective; includes only own ship placements and observed shots. */
 public record BattleResponse(
@@ -16,5 +18,7 @@ public record BattleResponse(
     Long winnerId,
     List<ShipPlacement> yourShips,
     List<ShotRecord> shotsFired,
-    List<ShotRecord> shotsReceived
+    List<ShotRecord> shotsReceived,
+    String finishReason,
+    Map<Long, Instant> reconnectDeadlines
 ) {}

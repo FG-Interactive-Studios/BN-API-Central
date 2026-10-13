@@ -202,6 +202,14 @@ ativos nem navios móveis). Não existe timeout de turno nesta V1.
 
 Contrato: [Motor de batalha](docs/api/battle-engine.md).
 
+**Encerramento:** desistência voluntária e queda do WebSocket são
+tratadas separadamente. Em `PLAYING`, `POST /api/matches/me/forfeit`
+ou `DELETE /api/matchmaking/lobbies/me` produzem derrota por abandono,
+mantendo o resultado consultável até os participantes saírem.
+Desconexão inicia tolerância de 120 s por padrão, cancelada ao reconectar;
+o servidor não declara vencedor arbitrário se ambos desaparecerem.
+Veja [encerramento e reconexão](docs/api/battle-termination.md).
+
 ## Princípio server-authoritative
 
 O cliente **não decide**:

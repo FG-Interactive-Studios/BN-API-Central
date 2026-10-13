@@ -19,6 +19,11 @@ public class BattleController {
         return battles.mine(Long.parseLong(jwt.getSubject()));
     }
 
+    @PostMapping("/forfeit")
+    public BattleResponse forfeit(@AuthenticationPrincipal Jwt jwt) {
+        return battles.forfeit(Long.parseLong(jwt.getSubject()));
+    }
+
     @PostMapping("/shots")
     public BattleResponse fire(@AuthenticationPrincipal Jwt jwt,
                                @RequestBody FireRequest request) {

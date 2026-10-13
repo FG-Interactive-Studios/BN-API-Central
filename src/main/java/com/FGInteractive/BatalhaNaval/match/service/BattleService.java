@@ -55,6 +55,29 @@ public class BattleService {
         return change.self();
     }
 
+    /** Authenticated intent only: loser is derived from the JWT subject. */
+    public BattleResponse forfeit(long userId) {
+        BattleChanges change = matchmaking.withBattleRoom(userId, room -> {
+            BattleRound battle = store.battle(room.code());
+            boolean changed;
+            try {
+                changed = battle.forfeit(userId);
+            } catch (IllegalStateException ex) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
+            }
+            if (changed) room.finishBattle();
+            return new BattleChanges(room.hostId(), room.guestId(),
+                battle.view(userId), battle.view(room.hostId()),
+                battle.view(room.guestId()), changed);
+        });
+        if (change.finished()) {
+            realtime.sendToPlayer(change.hostId(), "BATTLE_UPDATED", change.host());
+            realtime.sendToPlayer(change.guestId(), "BATTLE_UPDATED", change.guest());
+            matchmaking.publishRoomFor(userId);
+        }
+        return change.self();
+    }
+
     private record BattleChanges(long hostId, long guestId,
                                  BattleResponse self, BattleResponse host,
                                  BattleResponse guest, boolean finished) {}

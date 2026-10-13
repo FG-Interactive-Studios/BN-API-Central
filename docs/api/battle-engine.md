@@ -105,9 +105,19 @@ o tiro utiliza REST autenticado, e o servidor publica o estado resultante.
 Após recarregar a página ou reconectar o WebSocket, chamar
 `GET /api/matches/me` para recuperar o estado autoritativo. Renovar JWT
 ou alterar a senha não interrompe a partida. Desconectar **não significa
-derrota**. Uma saída explícita do lobby descarta o jogo; se o convidado
-sair, a sala do anfitrião volta a `WAITING`. Ainda não há desistência
-automática, abandono com vencedor, timeout nem controle de AFK.
+derrota**. Em `PLAYING`, sair explicitamente significa desistir; o adversário
+vence, e o resultado é preservado até que cada participante o dispense.
+A desconexão tem tolerância configurável. Não há timeout por turno nem AFK
+enquanto um WebSocket válido permanece conectado.
+
+## Encerramento por desistência ou desconexão
+
+Implementado em [encerramento e reconexão](battle-termination.md).
+Desistência voluntária ou saída explícita durante `PLAYING` atribui
+vitória ao adversário, preservando o resultado até que os jogadores
+o descartem. Queda de WebSocket tem prazo de tolerância; o jogo
+não termina imediatamente. Após ambos expirarem desconectados, termina
+sem vencedor.
 
 ## Fora desta etapa acadêmica
 

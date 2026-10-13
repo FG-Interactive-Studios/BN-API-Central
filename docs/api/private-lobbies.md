@@ -83,7 +83,13 @@ Ao conectar, o backend também emite `LOBBY_UPDATED` com o snapshot atual.
 
 - Salas armazenadas somente em memória, uma instância da API,
   até 1000 salas simultâneas. Reiniciar a instância perde as salas.
-- Não há limpeza automática por ausência prolongada do anfitrião.
+- Na fase `PLAYING`, `DELETE /me` significa desistência com derrota:
+  mantém o resultado acessível, não fecha a sala imediatamente.
+  Em `FINISHED`, `DELETE /me` remove apenas o próprio acesso ao resultado;
+  a sala é liberada quando ambos os jogadores saírem.
+  Consulte [encerramento da partida](battle-termination.md).
+- Não há limpeza automática por ausência prolongada do anfitrião em
+  `WAITING`/`PREPARING`; durante `PLAYING` há prazo de reconexão.
 - Após ambos confirmarem a frota em `PREPARING`, a sala muda para
   `PLAYING`. Quando há vencedor, muda para `FINISHED`.
   Consulte [Motor de batalha](battle-engine.md).

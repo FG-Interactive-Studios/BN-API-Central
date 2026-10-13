@@ -2,6 +2,8 @@ package com.FGInteractive.BatalhaNaval.matchmaking.service;
 
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse;
 import com.FGInteractive.BatalhaNaval.match.service.MatchPreparationStore;
+import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
+import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeRegistry;
 import java.util.function.Function;
@@ -12,6 +14,8 @@ import com.FGInteractive.BatalhaNaval.shared.websocket.RealtimeWebSocketHandler;
 import com.FGInteractive.BatalhaNaval.user.model.User;
 import com.FGInteractive.BatalhaNaval.user.repository.UserRepository;
 import java.security.SecureRandom;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +23,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.context.event.EventListener;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,14 +47,21 @@ public class MatchmakingService {
     private final RealtimeWebSocketHandler realtime;
     private final MatchPreparationStore preparations;
     private final GameModeRegistry modes;
+    private final Duration disconnectGrace;
 
     public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime,
-                              MatchPreparationStore preparations, GameModeRegistry modes) {
+                              MatchPreparationStore preparations, GameModeRegistry modes,
+                              @Value("${match.disconnect-grace-seconds:120}") long graceSeconds) {
+        if (graceSeconds < 1 || graceSeconds > 3600)
+            throw new IllegalArgumentException("Disconnect grace must be between 1 and 3600 seconds");
         this.users = users;
         this.realtime = realtime;
         this.preparations = preparations;
         this.modes = modes;
+        this.disconnectGrace = Duration.ofSeconds(graceSeconds);
     }
+
+    public Duration disconnectGrace() { return disconnectGrace; }
 
     public LobbyResponse create(long userId) { return create(userId, null); }
 
@@ -128,31 +141,63 @@ public class MatchmakingService {
         return view;
     }
 
+    /**
+     * Leaving during PLAYING is an explicit surrender, but preserves both
+     * memberships until the players dismiss the result. Leaving a FINISHED
+     * match frees that player; the last departure releases the in-memory room.
+     * In WAITING / PREPARING, retain the original lobby semantics.
+     */
     public void leave(long userId) {
         LobbyRoom room;
         Long guestToNotify = null;
         boolean guestLeft = false;
+        boolean surrendered = false;
+        boolean departedFinished = false;
         synchronized (mutex) {
             String code = membership.get(userId);
-            if (code == null) return; // Idempotent DELETE.
+            if (code == null) return;
             room = rooms.get(code);
-            membership.remove(userId);
-            if (room == null) return;
-            // Guest departures also clear an in-progress board before host can
-            // ready-up with a different opponent.
-            preparations.remove(room.code());
-            if (room.hostId() == userId) {
-                guestToNotify = room.guestId();
-                rooms.remove(code);
-                if (guestToNotify != null) membership.remove(guestToNotify);
+            if (room == null) {
+                membership.remove(userId);
+                return;
+            }
+            if (room.phase() == LobbyRoom.Phase.PLAYING) {
+                BattleRound battle = preparations.battle(code);
+                battle.forfeit(userId);
+                room.finishBattle();
+                surrendered = true;
+                // Do not remove user membership: both can inspect final outcome.
+            } else if (room.phase() == LobbyRoom.Phase.FINISHED) {
+                membership.remove(userId);
+                room.departAfterFinish(userId);
+                departedFinished = true;
+                long other = room.hostId() == userId ? room.guestId() : room.hostId();
+                if (!code.equals(membership.get(other))) {
+                    rooms.remove(code);
+                    preparations.remove(code);
+                }
             } else {
-                room.guestLeaves();
-                guestLeft = true;
+                membership.remove(userId);
+                preparations.remove(code);
+                if (room.hostId() == userId) {
+                    guestToNotify = room.guestId();
+                    rooms.remove(code);
+                    if (guestToNotify != null) membership.remove(guestToNotify);
+                } else {
+                    room.guestLeaves();
+                    guestLeft = true;
+                }
             }
         }
+        if (surrendered) {
+            broadcast(room);
+            publishBattle(room, null);
+            return;
+        }
         realtime.sendToPlayer(userId, "LOBBY_LEFT", Map.of());
-        if (guestToNotify != null) realtime.sendToPlayer(guestToNotify, "LOBBY_CLOSED", Map.of());
-        if (guestLeft) broadcast(room);
+        if (guestToNotify != null)
+            realtime.sendToPlayer(guestToNotify, "LOBBY_CLOSED", Map.of());
+        if (guestLeft || departedFinished) broadcast(room);
     }
 
     @EventListener
@@ -160,22 +205,82 @@ public class MatchmakingService {
         LobbyRoom room;
         boolean changed;
         LobbyResponse snapshot = null;
+        boolean battleStateChanged = false;
+        boolean hasBattle = false;
         synchronized (mutex) {
             String code = membership.get(event.userId());
             if (code == null) return;
             room = rooms.get(code);
             if (room == null) return;
-            changed = room.setConnected(event.userId(),
-                realtime.isPlayerConnected(event.userId()));
-            // A second tab must receive its initial snapshot even if the
-            // account was already online from another tab.
+            boolean online = realtime.isPlayerConnected(event.userId());
+            changed = room.setConnected(event.userId(), online);
+            if (room.phase() == LobbyRoom.Phase.PLAYING) {
+                hasBattle = true;
+                BattleRound battle = preparations.battle(code);
+                Instant now = Instant.now();
+                // An overdue reconnect cannot erase an already expired
+                // deadline merely because the watchdog has not run yet.
+                if (battle.resolveDisconnects(now)) {
+                    room.finishBattle();
+                    battleStateChanged = true;
+                } else {
+                    battleStateChanged = battle.setPlayerConnected(
+                        event.userId(), online, now, disconnectGrace);
+                }
+            } else if (room.phase() == LobbyRoom.Phase.FINISHED) {
+                hasBattle = true;
+            }
             if (!changed) snapshot = view(room);
         }
-        if (changed) {
-            broadcast(room);
-        } else {
-            realtime.sendToPlayer(event.userId(), "LOBBY_UPDATED", snapshot);
+        if (changed || battleStateChanged) broadcast(room);
+        else realtime.sendToPlayer(event.userId(), "LOBBY_UPDATED", snapshot);
+        // New socket/second tab receives a private match snapshot, not just
+        // a lobby update. Deadline changes are also visible to the opponent.
+        if (hasBattle) publishBattle(room, (changed || battleStateChanged)
+            ? null : event.userId());
+    }
+
+    /** Cron only adjudicates expired deadlines; event callbacks cancel them. */
+    @Scheduled(fixedDelayString = "${match.disconnect-sweep-ms:5000}")
+    public void sweepDisconnected() {
+        sweepDisconnectedAt(Instant.now());
+    }
+
+    /** Explicit clock makes timeout races testable without sleeping. */
+    public void sweepDisconnectedAt(Instant now) {
+        List<LobbyRoom> resolved = new ArrayList<>();
+        synchronized (mutex) {
+            for (LobbyRoom room : rooms.values()) {
+                if (room.phase() != LobbyRoom.Phase.PLAYING) continue;
+                if (preparations.battle(room.code()).resolveDisconnects(now)) {
+                    room.finishBattle();
+                    resolved.add(room);
+                }
+            }
         }
+        for (LobbyRoom room : resolved) {
+            broadcast(room);
+            publishBattle(room, null);
+        }
+    }
+
+    private void publishBattle(LobbyRoom room, Long onlyPlayer) {
+        BattleResponse host;
+        BattleResponse guest;
+        boolean sendHost;
+        boolean sendGuest;
+        synchronized (mutex) {
+            if (rooms.get(room.code()) != room) return;
+            BattleRound battle = preparations.battle(room.code());
+            host = battle.view(room.hostId());
+            guest = battle.view(room.guestId());
+            sendHost = (onlyPlayer == null || room.hostId() == onlyPlayer)
+                && room.code().equals(membership.get(room.hostId()));
+            sendGuest = (onlyPlayer == null || room.guestId() == onlyPlayer)
+                && room.code().equals(membership.get(room.guestId()));
+        }
+        if (sendHost) realtime.sendToPlayer(room.hostId(), "BATTLE_UPDATED", host);
+        if (sendGuest) realtime.sendToPlayer(room.guestId(), "BATTLE_UPDATED", guest);
     }
 
     private void broadcast(LobbyRoom room) {
@@ -184,7 +289,8 @@ public class MatchmakingService {
         synchronized (mutex) {
             if (rooms.get(room.code()) != room) return;
             view = view(room);
-            participants = room.participants();
+            participants = room.participants().stream()
+                .filter(id -> room.code().equals(membership.get(id))).toList();
         }
         // Never perform socket I/O under the room lock. Revisions let clients
         // discard late updates if two broadcasts race after unlocking.
@@ -236,9 +342,11 @@ public class MatchmakingService {
 
     private LobbyResponse view(LobbyRoom room) {
         List<LobbyPlayer> players = new ArrayList<>(2);
-        players.add(player(room.hostId(), room.hostReady(), room.hostConnected()));
+        players.add(player(room.hostId(), room.hostReady(),
+            room.hostConnected() && room.code().equals(membership.get(room.hostId()))));
         if (room.guestId() != null) {
-            players.add(player(room.guestId(), room.guestReady(), room.guestConnected()));
+            players.add(player(room.guestId(), room.guestReady(),
+                room.guestConnected() && room.code().equals(membership.get(room.guestId()))));
         }
         return new LobbyResponse(room.code(), room.phase().name(), room.revision(), 2,
             List.copyOf(players), room.mode().summary());

@@ -67,6 +67,11 @@ public class MatchService {
                     round.confirmedBoard(room.guestId()));
                 preparations.startBattle(room.code(), battle);
                 room.startBattle();
+                java.time.Instant now = java.time.Instant.now();
+                battle.setPlayerConnected(room.hostId(), room.hostConnected(), now,
+                    matchmaking.disconnectGrace());
+                battle.setPlayerConnected(room.guestId(), room.guestConnected(), now,
+                    matchmaking.disconnectGrace());
                 hostGame = battle.view(room.hostId());
                 guestGame = battle.view(room.guestId());
                 started = true;

@@ -96,6 +96,14 @@ public final class LobbyRoom {
         revision++;
     }
 
+    /** A finished participant leaves the result screen; keep it for the other. */
+    public void departAfterFinish(long userId) {
+        if (phase != Phase.FINISHED || !contains(userId))
+            throw new IllegalStateException("No finished match to leave");
+        setConnected(userId, false);
+        revision++;
+    }
+
     /** A guest leaving reopens the same room and clears readiness. */
     public void guestLeaves() {
         guestId = null;
