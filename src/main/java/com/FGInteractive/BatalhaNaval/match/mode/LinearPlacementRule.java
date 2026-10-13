@@ -14,6 +14,7 @@ public final class LinearPlacementRule implements PlacementRule {
     @Override public List<Cell> footprint(ShipPlacement placement, ShipDefinition ship,
                                            BoardGeometry geometry) {
         if (!supports(geometry) || placement == null
+            || placement.orientation() == null
             || !directions().contains(placement.orientation())
             || placement.row() == null || placement.col() == null)
             throw new IllegalArgumentException("Ship coordinates and orientation are required");
