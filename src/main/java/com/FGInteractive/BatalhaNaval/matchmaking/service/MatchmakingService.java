@@ -5,7 +5,7 @@ import com.FGInteractive.BatalhaNaval.match.service.MatchPreparationStore;
 import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
-import com.FGInteractive.BatalhaNaval.match.mode.GameModeRegistry;
+import com.FGInteractive.BatalhaNaval.match.mode.GameModeAvailabilityService;
 import java.util.function.Function;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse.LobbyPlayer;
 import com.FGInteractive.BatalhaNaval.matchmaking.model.LobbyRoom;
@@ -46,11 +46,11 @@ public class MatchmakingService {
     private final UserRepository users;
     private final RealtimeWebSocketHandler realtime;
     private final MatchPreparationStore preparations;
-    private final GameModeRegistry modes;
+    private final GameModeAvailabilityService modes;
     private final Duration disconnectGrace;
 
     public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime,
-                              MatchPreparationStore preparations, GameModeRegistry modes,
+                              MatchPreparationStore preparations, GameModeAvailabilityService modes,
                               @Value("${match.disconnect-grace-seconds:120}") long graceSeconds) {
         if (graceSeconds < 1 || graceSeconds > 3600)
             throw new IllegalArgumentException("Disconnect grace must be between 1 and 3600 seconds");
@@ -66,23 +66,25 @@ public class MatchmakingService {
     public LobbyResponse create(long userId) { return create(userId, null); }
 
     public LobbyResponse create(long userId, String modeId) {
-        // Unknown mode must fail before room allocation or member indexing.
-        GameModeDefinition mode = modes.get(modeId);
-        LobbyRoom room;
-        LobbyResponse view;
-        synchronized (mutex) {
-            requireFree(userId);
-            if (rooms.size() >= MAX_ROOMS) {
-                throw problem(HttpStatus.SERVICE_UNAVAILABLE, "Lobby capacity reached");
+        // Availability check and lobby allocation are ordered atomically with
+        // administrator toggles. Existing room snapshots never change modes.
+        return modes.withEnabledMode(modeId, mode -> {
+            LobbyRoom room;
+            LobbyResponse response;
+            synchronized (mutex) {
+                requireFree(userId);
+                if (rooms.size() >= MAX_ROOMS) {
+                    throw problem(HttpStatus.SERVICE_UNAVAILABLE, "Lobby capacity reached");
+                }
+                String code = newCode();
+                room = new LobbyRoom(code, userId, realtime.isPlayerConnected(userId), mode);
+                response = view(room); // Validate user before mutating indexes.
+                rooms.put(code, room);
+                membership.put(userId, code);
             }
-            String code = newCode();
-            room = new LobbyRoom(code, userId, realtime.isPlayerConnected(userId), mode);
-            view = view(room); // Check player existence before mutating the indexes.
-            rooms.put(code, room);
-            membership.put(userId, code);
-        }
-        broadcast(room);
-        return view;
+            broadcast(room);
+            return response;
+        });
     }
 
     public LobbyResponse join(long userId, String suppliedCode) {
