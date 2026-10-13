@@ -75,7 +75,9 @@ class GameModesPostgresIntegrationTests {
             .andExpect(jsonPath("$[?(@.id == 'classic')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.id == 'quick')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.id == 'triangular')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'triangle-tiles')]").isNotEmpty());
+            .andExpect(jsonPath("$[?(@.id == 'triangle-tiles')]").isNotEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'hexagons')]").isNotEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'octagons')]").isNotEmpty());
     }
 
     @Test void defaultClassicIsBackwardCompatibleAndUnknownModeCannotAllocateRoom() throws Exception {
@@ -220,6 +222,81 @@ class GameModesPostgresIntegrationTests {
             leave(host);
             leave(host);
             leave(guest);
+        }
+    }
+
+    @Test void hexagonalAndOctagonalModesWorkFromLobbyToBattleWithJwt() throws Exception {
+        for(String modeId : new String[]{"hexagons","octagons"}) {
+            Player host=player(),guest=player();
+            try {
+                prepare(host,guest,modeId);
+                String own=state(host),other=state(guest);
+                String kind=modeId.equals("hexagons")?"HEXAGONAL_TILES":"OCTAGONAL_TILES";
+                int cells=modeId.equals("hexagons")?61:64;
+                int axes=modeId.equals("hexagons")?3:4;
+                assertEquals(kind,JsonPath.read(own,"$.mode.geometry.kind"));
+                assertEquals(cells,((Number)JsonPath.read(own,
+                    "$.mode.geometry.cells.length()")).intValue());
+                assertEquals(cells,((Number)JsonPath.read(own,
+                    "$.mode.geometry.tiles.length()")).intValue());
+                assertEquals(axes,((Number)JsonPath.read(own,
+                    "$.mode.placementDirections.length()")).intValue());
+
+                // Unknown mode-specific orientation must fail before editing a fleet.
+                String invalid=modeId.equals("hexagons")?"HORIZONTAL":"HEX_VERTICAL";
+                mvc.perform(put("/api/matches/me/placement")
+                    .header("Authorization","Bearer "+host.jwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {"ships":[
+                          {"type":"BATTLESHIP","row":4,"col":4,"orientation":"%s"},
+                          {"type":"CRUISER","row":4,"col":0,"orientation":"%s"},
+                          {"type":"DESTROYER","row":6,"col":1,"orientation":"%s"}
+                        ]}
+                        """.formatted(invalid,invalid,invalid)))
+                    .andExpect(status().isBadRequest());
+
+                mvc.perform(post("/api/matches/me/placement/random")
+                    .header("Authorization","Bearer "+host.jwt))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.yourShips.length()").value(3));
+                mvc.perform(post("/api/matches/me/placement/random")
+                    .header("Authorization","Bearer "+guest.jwt))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.yourShips.length()").value(3));
+                assertEquals(3,((Number)JsonPath.read(state(guest),
+                    "$.yourShips.length()")).intValue());
+                assertEquals(0,((Number)JsonPath.read(own,
+                    "$.yourShips.length()")).intValue());
+                assertEquals(true,JsonPath.read(state(guest),"$.opponentPlaced"));
+                for(Player p:new Player[]{host,guest}) {
+                    mvc.perform(post("/api/matches/me/placement/confirm")
+                        .header("Authorization","Bearer "+p.jwt))
+                        .andExpect(status().isOk());
+                }
+                if(modeId.equals("hexagons")) {
+                    mvc.perform(post("/api/matches/me/shots")
+                        .header("Authorization","Bearer "+host.jwt)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                            {"row":0,"col":0}
+                            """)).andExpect(status().isBadRequest());
+                }
+                mvc.perform(post("/api/matches/me/shots")
+                    .header("Authorization","Bearer "+host.jwt)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                        {"row":4,"col":4}
+                        """))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.mode.geometry.kind").value(kind))
+                    .andExpect(jsonPath("$.shotsFired.length()").value(1));
+            } finally {
+                // PLAYING -> FINISHED forfeit -> dismiss. Also safe before PLAYING.
+                leave(host);
+                leave(host);
+                leave(guest);
+            }
         }
     }
 
