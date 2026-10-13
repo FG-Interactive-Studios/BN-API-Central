@@ -76,8 +76,7 @@ class GameModesPostgresIntegrationTests {
             .andExpect(jsonPath("$[?(@.id == 'quick')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.id == 'triangular')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.id == 'triangle-tiles')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'hexagons')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'octagons')]").isNotEmpty());
+            .andExpect(jsonPath("$[?(@.id == 'hexagons')]").isNotEmpty());
     }
 
     @Test void defaultClassicIsBackwardCompatibleAndUnknownModeCannotAllocateRoom() throws Exception {
@@ -225,15 +224,15 @@ class GameModesPostgresIntegrationTests {
         }
     }
 
-    @Test void hexagonalAndOctagonalModesWorkFromLobbyToBattleWithJwt() throws Exception {
-        for(String modeId : new String[]{"hexagons","octagons"}) {
+    @Test void hexagonalModeWorksFromLobbyToBattleWithJwt() throws Exception {
+        for(String modeId : new String[]{"hexagons"}) {
             Player host=player(),guest=player();
             try {
                 prepare(host,guest,modeId);
                 String own=state(host),other=state(guest);
-                String kind=modeId.equals("hexagons")?"HEXAGONAL_TILES":"OCTAGONAL_TILES";
-                int cells=modeId.equals("hexagons")?61:64;
-                int axes=modeId.equals("hexagons")?3:4;
+                String kind="HEXAGONAL_TILES";
+                int cells=61;
+                int axes=3;
                 assertEquals(kind,JsonPath.read(own,"$.mode.geometry.kind"));
                 assertEquals(cells,((Number)JsonPath.read(own,
                     "$.mode.geometry.cells.length()")).intValue());
@@ -243,7 +242,7 @@ class GameModesPostgresIntegrationTests {
                     "$.mode.placementDirections.length()")).intValue());
 
                 // Unknown mode-specific orientation must fail before editing a fleet.
-                String invalid=modeId.equals("hexagons")?"HORIZONTAL":"HEX_VERTICAL";
+                String invalid="HORIZONTAL";
                 mvc.perform(put("/api/matches/me/placement")
                     .header("Authorization","Bearer "+host.jwt)
                     .contentType(MediaType.APPLICATION_JSON)
