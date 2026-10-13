@@ -9,7 +9,7 @@ import java.util.List;
 public final class LinearPlacementRule implements PlacementRule {
     @Override public String id() { return "linear"; }
     @Override public boolean supports(BoardGeometry geometry) {
-        return !(geometry instanceof TriangularTileGeometry);
+        return geometry instanceof RectangularGeometry || geometry instanceof TriangularGeometry;
     }
     @Override public List<Cell> footprint(ShipPlacement placement, ShipDefinition ship,
                                            BoardGeometry geometry) {
