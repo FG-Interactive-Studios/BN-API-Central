@@ -9,6 +9,9 @@ on:
     branches:
       - main
 
+  # Publish images only on explicit manual request.
+  workflow_dispatch:
+
 jobs:
   test:
     name: Test and Build
@@ -72,7 +75,7 @@ jobs:
   docker:
     name: Publish Docker Image
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     permissions:
