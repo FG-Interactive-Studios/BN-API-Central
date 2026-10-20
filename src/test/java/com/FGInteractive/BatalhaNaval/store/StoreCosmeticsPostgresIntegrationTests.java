@@ -105,15 +105,15 @@ class StoreCosmeticsPostgresIntegrationTests {
         assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"sound_sonar",409),"$.code"));
         assertEquals("ITEM_NOT_FOUND",JsonPath.read(purchase(p,"does-not-exist",404),"$.code"));
         assertEquals("NOT_OWNED",JsonPath.read(equip(p,"skin_abyss",409),"$.code"));
-        assertEquals(300, JsonPath.read(store(p),"$.credits"));
+        assertEquals(300, ((Number)JsonPath.read(store(p),"$.credits")).intValue());
     }
 
     @Test
     void priceIsServerControlledAndOtherAccountsCannotReadInventory() throws Exception {
         Player a=player(), b=player();
         purchase(a,"skin_abyss",200);
-        assertEquals(160,JsonPath.read(store(a),"$.credits"));
-        assertEquals(300,JsonPath.read(store(b),"$.credits"));
+        assertEquals(160,((Number)JsonPath.read(store(a),"$.credits")).intValue());
+        assertEquals(300,((Number)JsonPath.read(store(b),"$.credits")).intValue());
         assertEquals(false,JsonPath.read(store(b),"$.items[?(@.id == 'skin_abyss')].owned").toString().contains("true"));
         // The endpoint ignores request payload fields that pretend to set a price.
         mvc.perform(post("/api/store/purchase/skin_coral")
@@ -121,7 +121,7 @@ class StoreCosmeticsPostgresIntegrationTests {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"price\":0,\"userId\":"+b.id()+"}"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.credits").value(70));
-        assertEquals(300,JsonPath.read(store(b),"$.credits"));
+        assertEquals(300,((Number)JsonPath.read(store(b),"$.credits")).intValue());
         assertEquals(2,jdbc.queryForObject(
             "SELECT COUNT(*) FROM player_items WHERE user_id=? AND item_id IN ('skin_coral','skin_abyss')",
             Integer.class,a.id()));
@@ -133,7 +133,7 @@ class StoreCosmeticsPostgresIntegrationTests {
         jdbc.update("INSERT INTO player_wallets(user_id,credits) VALUES (?, 50)",p.id());
         String error=purchase(p,"skin_abyss",409);
         assertEquals("INSUFFICIENT_CREDITS",JsonPath.read(error,"$.code"));
-        assertEquals(50,JsonPath.read(store(p),"$.credits"));
+        assertEquals(50,((Number)JsonPath.read(store(p),"$.credits")).intValue());
         assertEquals(0,jdbc.queryForObject(
             "SELECT COUNT(*) FROM player_items WHERE user_id=? AND item_id='skin_abyss'",
             Integer.class,p.id()));
