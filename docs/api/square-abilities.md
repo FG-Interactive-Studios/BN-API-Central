@@ -1,64 +1,77 @@
-# Habilidades no tabuleiro quadrado — piloto técnico
+# Oito poderes — piloto escalável para tabuleiros quadrados
 
-> **Status:** implementação experimental para testes, **não é o balanceamento aprovado do GDD**.
-> A issue BN-GameDesign #8 informa que energia, cooldown e condições de ativação
-> foram revisados. Validar as regras mais recentes no GDD antes de produção.
+> **Atenção:** efeitos abaixo são interpretações técnicas experimentais baseadas nos nomes
+> das oito habilidades da issue [Game Design #32](https://github.com/FG-Interactive-Studios/BN-GameDesign/issues/32).
+> O GDD foi revisado depois da planilha original e não estava acessível.
+> **Não são regras finais aprovadas**. Validar com GD antes de habilitar o modo para jogadores.
 
-## Escopo e segurança
+## Modos
 
-O modo original `classic` (10×10) e `quick` (8×8) continuam com
-`ABILITY=disabled`. O novo modo `classic-powers` usa a mesma frota e o mesmo
-tabuleiro quadrado clássico de 10×10, mas habilita o módulo
-`ABILITY=square-pilot-v1`. Apenas geometrias `RectangularGeometry` com
-linhas = colunas podem receber esse módulo. Não há adaptação implícita para
-máscaras triangulares, triângulos ou hexágonos.
+`classic-powers` possui geometria retangular 10×10, mesma frota do clássico
+e módulo `square-pilot-v1`, desabilitado por padrão pela administração.
+`classic`, `quick` e geometrias não quadradas permanecem inalterados. As
+estratégias funcionam também em geometria quadrada 8×8, com testes, sem
+adicionar implicitamente poderes ao modo rápido existente.
 
-Este piloto oferece somente duas habilidades:
-- `double-shot` (Tiro duplo): recebe **duas casas distintas e nunca atacadas**,
-  processa-as pelo motor normal e consome um único turno.
-- `radar`: recebe **uma casa central** e devolve, **somente ao jogador que
-  ativou**, a quantidade total de células ocupadas na vizinhança 3×3 limitada
-  pelas bordas. Não informa as coordenadas dos navios.
+## Arquitetura
 
-**Regras provisórias:** cada habilidade pode ser usada uma vez por participante
-a cada partida e cada ativação consome um turno. Ainda não há energia,
-cooldown, condição de navio vivo, movimento, escudos, debuffs ou persistência
-de uso. Nenhuma vantagem pode ser comprada pela loja.
+- `AbilitySpec`: metadados declarativos do servidor (nome, limite, quantidade
+  de alvos, tabuleiro próprio/inimigo e descrição).
+- `SquareAbilityRule`: registro imutável de comportamentos independentes;
+  inclui validações de forma, alvo e topologia, sem ramificações de id na engine.
+- `AbilityContext`: visão interna do estado da partida utilizada apenas para
+  planejar a ação.
+- `AbilityOutcome` + `AbilityEffect`: efeitos tipados (ataque, detecção,
+  proteção, sobrevivência, bloqueio e reposicionamento), aplicados no
+  `BattleRound` sob o mutex já existente de matchmaking.
+- `BattleRound`: contador autoritativo de ações, consumo de habilidades por
+  jogador, duração dos estados, ataques bloqueados/repetíveis e verificação
+  de vitória; mantém snapshots individuais e sem coordenadas secretas.
+- Um poder novo registra sua especificação e uma estratégia com efeito tipado;
+  novos tipos de efeito requerem uma implementação de execução e testes no motor.
 
-## API
+## Regras provisórias do piloto
 
-Requer JWT e uma partida `PLAYING` no modo `classic-powers`.
+| ID | Habilidade | Alvos | Efeito proposto |
+| --- | --- | --- | --- |
+| `double-shot` | Tiro duplo | 2 inimigos | Dois disparos em um único turno |
+| `air-strike` | Ataque aéreo | 1 inimigo | Ataque em área 2×2 partindo do canto superior esquerdo escolhido |
+| `line-barrage` | Rajada em linha | 2 inimigos | Extremidades de uma linha horizontal ou vertical de três casas |
+| `hull-shield` | Escudo de casco | 1 próprio | Protege uma embarcação intacta contra o próximo acerto, durante até duas ações inimigas |
+| `last-chance` | Última chance | 0 | Bloqueia o próximo acerto fatal durante três ações inimigas |
+| `radar` | Radar | 1 inimigo | Conta células ocupadas no entorno 3×3 de forma privada |
+| `interference` | Interferência | 0 | Bloqueia poderes na próxima ação do adversário, mas não seu tiro normal |
+| `retreat` | Retirada | 2 próprios | Move um navio intacto uma casa ortogonalmente sem mudar orientação |
 
-`POST /api/matches/me/abilities`
+Cada habilidade pode ser ativada **uma vez por jogador por partida** e gasta
+**uma ação completa**. Esses números, condicionantes, cooldown e custo são
+**provisórios**. Não há desbloqueio, nível, energia, embarcação viva obrigatória,
+monetização ou dados persistentes até aprovação explícita do GDD.
 
-Tiro duplo:
+## API e sigilo
+
+`POST /api/matches/me/abilities` autenticado:
+
 ```json
-{"abilityId":"double-shot","targets":[{"row":1,"col":2},{"row":3,"col":4}]}
+{"abilityId":"line-barrage","targets":[{"row":1,"col":0},{"row":1,"col":2}]}
 ```
 
-Radar:
-```json
-{"abilityId":"radar","targets":[{"row":5,"col":5}]}
-```
+Para poderes sem alvo, enviar `"targets":[]`. `retreat` exige a origem
+da embarcação (primeira casa original) e o novo início da mesma embarcação.
 
-Retorna o mesmo `BattleResponse` de `POST /shots`; publica
-`BATTLE_UPDATED` com snapshots privados para ambos os jogadores e, se a
-partida acabar, a atualização de lobby padrão.
+`BattleResponse.yourAbilities` contém, por poder, `id`, `name`,
+`usesRemaining`, `targetCount`, `targetScope`, `description` e `locked`.
+`yourRadarReports` contém apenas resultados do próprio jogador. O backend
+rejeita alvos inválidos, repetidos, já definitivamente atingidos, ativação
+fora de turno, ausência de permissão e limites excedidos.
 
-O snapshot passa a incluir `yourAbilities` (id, name, usesRemaining) e
-`yourRadarReports` (row, col, contacts). Esses dois campos mostram **apenas
-as informações do titular da sessão**. O segundo participante não recebe
-nem a origem nem o resultado da varredura.
+`ShotRecord.blocked=true` indica tiro interceptado por proteção:
+ele **não é um acerto nem uma célula permanentemente utilizada**; a casa
+pode ser atacada de novo. O frontend deve ignorá-lo nas marcas permanentes.
 
-Pré-condições e erros: 400 para campos, poder ou coordenadas inválidas; 409
-para fora de turno, partida terminada, modo desabilitado, uso esgotado ou
-célula já atacada. Não há gasto de uso/turno para comandos inválidos.
+## Revisão obrigatória antes do merge
 
-## Próximas etapas antes da versão final
-
-1. Revisar as especificações atualizadas no GDD junto ao Game Design e ajustar
-   custo, duração, limites, cooldowns, regras de desbloqueio e efeitos.
-2. Implementar as demais habilidades com estratégias específicas e testes.
-3. Integrar à tela de partida em uma PR separada, mantendo os botões
-   indisponíveis quando `yourAbilities` vier vazio.
-4. Testar fluxo completo REST + WebSocket, mobile e desktop; revisar QA.
+- Conferir condições e balanceamento contra a versão mais recente do GDD.
+- Validar em QA a movimentação, os poderes defensivos e o combate em
+  smartphones e desktops, incluindo reconexão e eventos WebSocket.
+- Somente o administrador deve habilitar `classic-powers` no catálogo.
