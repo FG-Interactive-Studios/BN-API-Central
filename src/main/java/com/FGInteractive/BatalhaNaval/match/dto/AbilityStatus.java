@@ -1,4 +1,6 @@
 package com.FGInteractive.BatalhaNaval.match.dto;
 
-/** Available only in the authenticated player's own battle snapshot. */
-public record AbilityStatus(String id, String name, int usesRemaining) {}
+/** Public ability definition + private per-player availability. */
+public record AbilityStatus(String id, String name, int usesRemaining,
+                            int targetCount, String targetScope, String description,
+                            boolean locked) {}

@@ -1,10 +1,13 @@
 package com.FGInteractive.BatalhaNaval.match.mode;
 
-import com.FGInteractive.BatalhaNaval.match.dto.RadarReport;
-import com.FGInteractive.BatalhaNaval.match.model.Cell;
 import java.util.List;
 
-/** Planned public shots and an optional PRIVATE result; neither mutates the board. */
-public record AbilityOutcome(List<Cell> shots, RadarReport privateRadarReport) {
-    public AbilityOutcome { shots = List.copyOf(shots); }
+/** Immutable action plan. Validation completes before the shared match state is mutated. */
+public record AbilityOutcome(List<AbilityEffect> effects) {
+    public AbilityOutcome {
+        if (effects == null || effects.isEmpty())
+            throw new IllegalArgumentException("Ability needs an effect");
+        effects = List.copyOf(effects);
+    }
+    public static AbilityOutcome of(AbilityEffect effect) { return new AbilityOutcome(List.of(effect)); }
 }
