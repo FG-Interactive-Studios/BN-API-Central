@@ -100,8 +100,9 @@ class AdminGameModesPostgresIntegrationTests {
         mvc.perform(get("/api/admin/game-modes")
             .header("Authorization","Bearer "+admin.jwt))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.length()").value(5))
-            .andExpect(jsonPath("$[?(@.mode.id == 'hexagons')]").isNotEmpty());
+            .andExpect(jsonPath("$.length()").value(6))
+            .andExpect(jsonPath("$[?(@.mode.id == 'hexagons')]").isNotEmpty())
+            .andExpect(jsonPath("$[?(@.mode.id == 'classic-powers')]").isNotEmpty());
         String disabled=change(admin,"quick","{\"enabled\":false}",200);
         assertEquals(false,JsonPath.read(disabled,"$.enabled"));
         assertEquals(admin.id(),((Number)JsonPath.read(disabled,"$.updatedBy")).longValue());
