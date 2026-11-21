@@ -17,7 +17,7 @@ public final class BattleRound {
     private final long guestId;
     private final Map<Long, Board> boards;
     private final Map<Long, LinkedHashMap<Cell, ShotRecord>> shots = new HashMap<>();
-    private final Map<Long, Set<String>> usedAbilities = new HashMap<>();
+    private final Map<Long, Map<String,Integer>> abilityUseCounts = new HashMap<>();
     private final Map<Long, List<RadarReport>> radarReports = new HashMap<>();
     private long turnPlayerId;
     private Long winnerId;
@@ -37,8 +37,8 @@ public final class BattleRound {
                         guestId, Objects.requireNonNull(guestBoard));
         shots.put(hostId, new LinkedHashMap<>());
         shots.put(guestId, new LinkedHashMap<>());
-        usedAbilities.put(hostId, new HashSet<>());
-        usedAbilities.put(guestId, new HashSet<>());
+        abilityUseCounts.put(hostId, new HashMap<>());
+        abilityUseCounts.put(guestId, new HashMap<>());
         radarReports.put(hostId, new ArrayList<>());
         radarReports.put(guestId, new ArrayList<>());
         turnPlayerId = hostId; // Explicit deterministic opening rule for V1.
@@ -159,7 +159,7 @@ public final class BattleRound {
         AbilitySpec spec = ability.catalog().stream()
             .filter(entry -> entry.id().equals(abilityId)).findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Unknown ability"));
-        if (usedAbilities.get(attacker).contains(spec.id()))
+        if (abilityUseCounts.get(attacker).getOrDefault(spec.id(), 0) >= spec.maxUses())
             throw new IllegalStateException("Ability usage limit reached");
         long defender = attacker == hostId ? guestId : hostId;
         AbilityOutcome outcome = ability.resolve(abilityId, targets, mode, boards.get(defender));
@@ -184,7 +184,7 @@ public final class BattleRound {
         }
         if (outcome.privateRadarReport() != null)
             radarReports.get(attacker).add(outcome.privateRadarReport());
-        usedAbilities.get(attacker).add(spec.id());
+        abilityUseCounts.get(attacker).merge(spec.id(), 1, Integer::sum);
         long next = defeated ? attacker : turns.nextPlayer(attacker, defender, lastImpact);
         if (!defeated && next != hostId && next != guestId)
             throw new IllegalStateException("Turn rule selected a non-participant");
@@ -202,8 +202,8 @@ public final class BattleRound {
         long rival = player == hostId ? guestId : hostId;
         List<AbilityStatus> available = mode.rules().get(RuleSlot.ABILITY) instanceof AbilityRule rule
             ? rule.catalog().stream().map(spec -> new AbilityStatus(
-                spec.id(), spec.name(), usedAbilities.get(player).contains(spec.id())
-                    ? 0 : spec.maxUses())).toList()
+                spec.id(), spec.name(), Math.max(0, spec.maxUses()
+                    - abilityUseCounts.get(player).getOrDefault(spec.id(), 0)))).toList()
             : List.of();
         return new BattleResponse(id, lobbyCode, mode.summary(),
             finished() ? "FINISHED" : "PLAYING", revision,
