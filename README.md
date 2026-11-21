@@ -189,8 +189,9 @@ Contrato completo: [Preparação de frotas](docs/api/fleet-preparation.md).
 A [arquitetura de modos de jogo](docs/architecture/composable-game-modes.md)
 permite combinar geometria, frota e regras de posicionamento, preparando
 extensões futuras para tiro, movimento, poderes e debuffs. O motor de
-batalha já executa ataque, alternância de turnos e vitória; **movimento,
-poderes e debuffs ainda não**.
+batalha já executa ataque, alternância de turnos e vitória. Movimento e
+debuffs ainda não estão disponíveis; Tiro Duplo e Radar têm um
+[piloto isolado](docs/api/square-abilities.md) para o tabuleiro quadrado.
 
 ## Disponibilidade administrativa dos modos
 
@@ -232,8 +233,9 @@ vitória. `BATTLE_UPDATED` publica snapshots privados por jogador, com
 
 As mecânicas `ATTACK`, `TURN` e `VICTORY` agora são estratégias Java
 **executáveis e intercambiáveis**, em todos os modos registrados.
-`MOVEMENT` e `ABILITY` seguem como contratos futuros (sem poderes
-ativos nem navios móveis). Não existe timeout de turno nesta V1.
+`MOVEMENT` segue como contrato futuro (sem navios móveis). O módulo `ABILITY`
+oferece um piloto experimental de Tiro Duplo e Radar exclusivamente no modo
+`classic-powers`, desabilitado por padrão. Os demais modos seguem sem poderes. Não existe timeout de turno nesta V1.
 
 Contrato: [Motor de batalha](docs/api/battle-engine.md).
 

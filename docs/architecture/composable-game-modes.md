@@ -17,8 +17,11 @@ não por flags ou regras fornecidas pelo navegador. Cada definição possui:
 `VictoryRule` agora possuem interfaces e implementações executáveis.
 O construtor de `GameModeDefinition` rejeita módulos declarativos nos
 slots de combate, para não aceitar modos incapazes de executar tiros.
-`MOVEMENT` e `ABILITY` continuam apenas contratos declarativos:
-**não há navios móveis, habilidades, buffs ou debuffs funcionais**.
+`MOVEMENT` permanece declarativo. `ABILITY` continua desabilitado nos modos
+originais; um módulo executável experimental (`square-pilot-v1`) oferece
+Tiro Duplo e Radar apenas em tabuleiro quadrado, isolado no modo
+`classic-powers` e desabilitado por padrão. Consulte
+[habilidades quadradas](../api/square-abilities.md).
 
 ## Modos registrados
 
@@ -36,7 +39,7 @@ aresta e caminhos de posicionamento próprios. As implementações coexistem
 para manter compatibilidade.
 Detalhes: [topologias e contrato de renderização](board-topologies.md).
 
-Os cinco modos compartilham as mesmas políticas de combate executáveis
+Os cinco modos originais compartilham as mesmas políticas de combate executáveis
 (e ainda declaram a ausência de movimento e poderes):
 `MOVEMENT=stationary`, `ATTACK=standard-shot`,
 `TURN=alternating`, `VICTORY=all-ships-sunk`,
@@ -124,8 +127,8 @@ entre habilidades, turnos e geometrias.
 
 A execução de ataque, alternância de turnos e condição de vitória já
 existe, com visão de partida e eventos privados por jogador:
-[Motor de batalha](../api/battle-engine.md). Poderes ativos, debuffs,
-movimentos e efeitos especiais **ainda não existem**. Serão acrescentados
+[Motor de batalha](../api/battle-engine.md). O piloto quadrado implementa apenas duas ações; debuffs, movimento e os
+outros seis poderes continuam fora do escopo até validação do GDD. Serão acrescentados
 como estratégias com semântica de ação, não como strings arbitrárias
 fornecidas pelo cliente.
 

@@ -35,8 +35,10 @@ entradas/saídas do lobby e comandos de preparação pelo mesmo lock de instânc
   segue o adversário.
 - `all-ships-sunk`: vitória quando toda a frota inimiga foi atingida.
   O lobby muda para `FINISHED` e futuros tiros são recusados.
-- `stationary` e `disabled` continuam como declarações: ainda não há
-  movimentos, poderes, buffs, debuffs nem outros tipos de ação no protocolo.
+- `stationary` e `disabled` continuam como declarações nos cinco modos
+  originais; não há movimento, buffs nem debuffs. O sexto modo
+  `classic-powers`, desabilitado por padrão, oferece [dois poderes
+  experimentais](square-abilities.md) e um endpoint específico para ativação.
 - `classic`, `quick` e `triangular` compartilham as políticas acima, mas
   usam suas geometrias e frotas específicas. O triangular usa **máscara de
   células quadradas**, não ladrilhos triangulares.
@@ -50,8 +52,9 @@ falham na construção, impedindo modos falsamente jogáveis.
 
 Novos modos poderão incluir, por exemplo, turno adicional ao acertar ou
 nova vitória, implementando essas interfaces e associando-as à definição
-do modo. O contrato de futuros poderes por navio exige estado/ações
-autoritativos adicionais e **não foi implementado** nesta PR.
+do modo. Poderes vinculados a embarcações, cooldowns, energia e efeitos duradouros
+continuam como etapas futuras do GDD. Apenas o piloto de Tiro Duplo e Radar
+possui ações autoritativas.
 
 ## Visão específica de cada jogador
 
@@ -121,7 +124,7 @@ sem vencedor.
 
 ## Fora desta etapa acadêmica
 
-Movimentação, habilidades ativas/passivas, debuffs, ações especiais,
-recompensas, ranking, replay persistente, timeout por turno e infraestrutura
+Movimentação, habilidades além do piloto quadrado, buffs/debuffs, ações
+especiais restantes, recompensas, ranking, replay persistente, timeout por turno e infraestrutura
 multi-instância. Jogos/lobbies permanecem em memória de uma única instância
 e são perdidos ao reiniciá-la. Sem migration nova.
