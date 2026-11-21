@@ -13,7 +13,8 @@ Migration Flyway `V6__game_mode_availability.sql`:
   com FK opcional para o usuário que fez a última alteração;
 - Semeia **habilitados**: `classic`, `quick`, `triangular`,
   `triangle-tiles` e `hexagons`.
-- **Novos modos registrados em Java**, sem linha nesta tabela,
+- Migration Flyway `V8__seed_classic_base_modes.sql` registra os modos base `classic` e `classic-powers` como habilitados somente na ausência de configuração. Ambos usam tabuleiro 10×10 e a mesma frota; somente o segundo oferece as oito habilidades experimentais. A migration não sobrescreve configurações existentes nem desabilita os demais modos anteriormente cadastrados.
+- **Outros novos modos registrados em Java**, sem linha nesta tabela,
   aparecem desabilitados até ativação administrativa.
 
 **Bootstrap automático do primeiro admin:** no primeiro start de uma

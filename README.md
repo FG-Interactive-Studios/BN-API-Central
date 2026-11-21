@@ -235,7 +235,7 @@ As mecânicas `ATTACK`, `TURN` e `VICTORY` agora são estratégias Java
 **executáveis e intercambiáveis**, em todos os modos registrados.
 `MOVEMENT` segue como contrato futuro (sem navios móveis). O módulo `ABILITY`
 oferece um piloto experimental de Tiro Duplo e Radar exclusivamente no modo
-`classic-powers`, desabilitado por padrão. Os demais modos seguem sem poderes. Não existe timeout de turno nesta V1.
+`classic-powers`, habilitado na inicialização do catálogo pela migration V8, sem substituir decisões administrativas existentes. O `classic` mantém tabuleiro 10×10 sem poderes. Os demais modos seguem sem poderes. Não existe timeout de turno nesta V1.
 
 Contrato: [Motor de batalha](docs/api/battle-engine.md).
 

@@ -49,11 +49,11 @@ class AdminGameModesPostgresIntegrationTests {
 
     @AfterEach void restoreCatalog() {
         // Settings changes survive HTTP requests; reset shared CI database so
-        // existing matchmaking integration tests always see all five modes.
+        // existing matchmaking integration tests always see all six modes.
         jdbc.update("""
             UPDATE game_mode_settings SET enabled = TRUE,
                 updated_by = NULL, updated_at = CURRENT_TIMESTAMP
-            WHERE mode_id IN ('classic','quick','triangular','triangle-tiles','hexagons')
+            WHERE mode_id IN ('classic','quick','triangular','triangle-tiles','hexagons','classic-powers')
             """);
     }
 
@@ -161,7 +161,7 @@ class AdminGameModesPostgresIntegrationTests {
         change(admin,"bad-mode","{\"enabled\":false}",404);
         change(admin,"classic","{}",400);
         change(admin,"classic","{\"enabled\":null}",400);
-        for(String id:new String[]{"quick","triangular","triangle-tiles","hexagons"}) {
+        for(String id:new String[]{"quick","triangular","triangle-tiles","hexagons","classic-powers"}) {
             change(admin,id,"{\"enabled\":false}",200);
         }
         change(admin,"classic","{\"enabled\":false}",409);
@@ -171,6 +171,26 @@ class AdminGameModesPostgresIntegrationTests {
             .header("Authorization","Bearer "+admin.jwt))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test void baseModeSeedPreservesExplicitAdministrativeDisable() throws Exception {
+        Player admin=player(false);
+        appointAdmin(admin);
+        String disabled=change(admin,"classic-powers","{\"enabled\":false}",200);
+        // Execute the exact seed again to verify conflict handling and audit preservation.
+        var resource=new org.springframework.core.io.ClassPathResource(
+            "db/migration/V8__seed_classic_base_modes.sql");
+        try(var connection=java.util.Objects.requireNonNull(jdbc.getDataSource()).getConnection()) {
+            org.springframework.jdbc.datasource.init.ScriptUtils.executeSqlScript(connection,resource);
+        }
+        assertEquals(false,jdbc.queryForObject(
+            "SELECT enabled FROM game_mode_settings WHERE mode_id='classic-powers'",Boolean.class));
+        assertEquals(admin.id(),jdbc.queryForObject(
+            "SELECT updated_by FROM game_mode_settings WHERE mode_id='classic-powers'",Long.class));
+        String stillDisabled=change(admin,"classic-powers","{\"enabled\":false}",200);
+        assertEquals((String)JsonPath.read(disabled,"$.updatedAt"),
+            (String)JsonPath.read(stillDisabled,"$.updatedAt"));
+        create(admin,"classic-powers",409);
     }
 
     @Test void revokingAdministratorInDbBlocksAlreadyIssuedJwt() throws Exception {

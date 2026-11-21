@@ -76,7 +76,8 @@ class GameModesPostgresIntegrationTests {
             .andExpect(jsonPath("$[?(@.id == 'quick')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.id == 'triangular')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.id == 'triangle-tiles')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'hexagons')]").isNotEmpty());
+            .andExpect(jsonPath("$[?(@.id == 'hexagons')]").isNotEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'classic-powers')]").isNotEmpty());
     }
 
     @Test void defaultClassicIsBackwardCompatibleAndUnknownModeCannotAllocateRoom() throws Exception {
@@ -94,6 +95,35 @@ class GameModesPostgresIntegrationTests {
         assertEquals(5,((Number)JsonPath.read(classic,"$.mode.fleet.length()")).intValue());
         assertEquals(100,((Number)JsonPath.read(classic,"$.mode.geometry.cells.length()")).intValue());
         leave(host);
+    }
+
+    @Test void bothBaseModesCanCreateSquareLobbiesAndOnlyPowersModeExposesAbilities() throws Exception {
+        for(String id:new String[]{"classic","classic-powers"}) {
+            Player host=player(),guest=player();
+            try {
+                prepare(host,guest,id);
+                String status=state(host);
+                assertEquals(id,JsonPath.read(status,"$.mode.id"));
+                assertEquals(100,((Number)JsonPath.read(status,"$.mode.geometry.cells.length()")).intValue());
+                assertEquals(5,((Number)JsonPath.read(status,"$.mode.fleet.length()")).intValue());
+                for(Player participant:new Player[]{host,guest}) {
+                    mvc.perform(post("/api/matches/me/placement/random")
+                        .header("Authorization","Bearer "+participant.jwt))
+                        .andExpect(status().isOk());
+                    mvc.perform(post("/api/matches/me/placement/confirm")
+                        .header("Authorization","Bearer "+participant.jwt))
+                        .andExpect(status().isOk());
+                }
+                mvc.perform(get("/api/matches/me")
+                    .header("Authorization","Bearer "+host.jwt))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.yourAbilities.length()").value(id.equals("classic")?0:8));
+            } finally {
+                leave(host);
+                leave(host);
+                leave(guest);
+            }
+        }
     }
 
     @Test void quickModeHasDistinctFleetAndPrivateOpponentViews() throws Exception {
