@@ -22,5 +22,6 @@ public record BattleResponse(
     String finishReason,
     Map<Long, Instant> reconnectDeadlines,
     List<AbilityStatus> yourAbilities,
-    List<RadarReport> yourRadarReports
+    List<RadarReport> yourRadarReports,
+    List<ActiveEffectStatus> yourActiveEffects
 ) {}

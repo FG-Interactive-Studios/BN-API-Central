@@ -3,6 +3,7 @@ package com.FGInteractive.BatalhaNaval.match.model;
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
 import com.FGInteractive.BatalhaNaval.match.dto.AbilityStatus;
 import com.FGInteractive.BatalhaNaval.match.dto.RadarReport;
+import com.FGInteractive.BatalhaNaval.match.dto.ActiveEffectStatus;
 import com.FGInteractive.BatalhaNaval.match.mode.*;
 import java.util.*;
 import java.time.Duration;
@@ -269,13 +270,25 @@ public final class BattleRound {
                 Math.max(0,spec.maxUses()-abilityUseCounts.get(player).getOrDefault(spec.id(),0)),
                 spec.targetCount(),spec.targetScope(),spec.description(),locked)).toList()
             :List.of();
+        List<ActiveEffectStatus> effects=new ArrayList<>();
+        ShieldState shield=shields.get(player);
+        if(shield!=null && shield.expiresAfterEnemyAction()>actionsTaken.get(rival))
+            effects.add(new ActiveEffectStatus("hull-shield",
+                "Escudo de casco: "+shield.shipType(),
+                shield.expiresAfterEnemyAction()-actionsTaken.get(rival)));
+        int lastChanceRemaining=lastChanceExpires.getOrDefault(player,0)-actionsTaken.get(rival);
+        if(lastChanceRemaining>0)
+            effects.add(new ActiveEffectStatus("last-chance","Última chance",lastChanceRemaining));
+        int jamRemaining=jamUntilAction.getOrDefault(player,0)-actionsTaken.get(player);
+        if(jamRemaining>0)
+            effects.add(new ActiveEffectStatus("interference","Interferência recebida",jamRemaining));
         return new BattleResponse(id,lobbyCode,mode.summary(),
             finished()?"FINISHED":"PLAYING",revision,
             finished()?null:turnPlayerId,winnerId,
             boards.get(player).ships(),List.copyOf(shots.get(player).values()),
             List.copyOf(shots.get(rival).values()),finishReason,
             Map.copyOf(reconnectDeadlines),available,
-            List.copyOf(radarReports.get(player)));
+            List.copyOf(radarReports.get(player)),List.copyOf(effects));
     }
 
     private void requireParticipant(long player) {
