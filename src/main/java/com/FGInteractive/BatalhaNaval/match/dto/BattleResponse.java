@@ -20,5 +20,7 @@ public record BattleResponse(
     List<ShotRecord> shotsFired,
     List<ShotRecord> shotsReceived,
     String finishReason,
-    Map<Long, Instant> reconnectDeadlines
+    Map<Long, Instant> reconnectDeadlines,
+    List<AbilityStatus> yourAbilities,
+    List<RadarReport> yourRadarReports
 ) {}

@@ -58,6 +58,16 @@ public class GameModePresets {
             HEXAGON, classicMechanics());
     }
 
+    /** Opt-in square pilot. The original classic mode deliberately stays without powers. */
+    public static GameModeDefinition classicPowers() {
+        GameModeDefinition base = classic();
+        EnumMap<RuleSlot, RuleModule> rules = new EnumMap<>(base.rules());
+        rules.put(RuleSlot.ABILITY, new SquareAbilityRule());
+        return new GameModeDefinition("classic-powers", "Classico com poderes (piloto)",
+            base.geometry(), base.fleet(), base.placement(), rules);
+    }
+
+    @Bean public GameModeDefinition classicPowersGameMode() { return classicPowers(); }
     @Bean public GameModeDefinition hexagonsGameMode() { return hexagons(); }
     @Bean public GameModeDefinition triangleTilesGameMode() { return triangleTiles(); }
     @Bean public GameModeDefinition triangularGameMode() { return triangular(); }

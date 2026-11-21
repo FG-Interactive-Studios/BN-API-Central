@@ -1,6 +1,8 @@
 package com.FGInteractive.BatalhaNaval.match.model;
 
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
+import com.FGInteractive.BatalhaNaval.match.dto.AbilityStatus;
+import com.FGInteractive.BatalhaNaval.match.dto.RadarReport;
 import com.FGInteractive.BatalhaNaval.match.mode.*;
 import java.util.*;
 import java.time.Duration;
@@ -15,6 +17,8 @@ public final class BattleRound {
     private final long guestId;
     private final Map<Long, Board> boards;
     private final Map<Long, LinkedHashMap<Cell, ShotRecord>> shots = new HashMap<>();
+    private final Map<Long, Set<String>> usedAbilities = new HashMap<>();
+    private final Map<Long, List<RadarReport>> radarReports = new HashMap<>();
     private long turnPlayerId;
     private Long winnerId;
     private String finishReason;
@@ -33,6 +37,10 @@ public final class BattleRound {
                         guestId, Objects.requireNonNull(guestBoard));
         shots.put(hostId, new LinkedHashMap<>());
         shots.put(guestId, new LinkedHashMap<>());
+        usedAbilities.put(hostId, new HashSet<>());
+        usedAbilities.put(guestId, new HashSet<>());
+        radarReports.put(hostId, new ArrayList<>());
+        radarReports.put(guestId, new ArrayList<>());
         turnPlayerId = hostId; // Explicit deterministic opening rule for V1.
     }
 
@@ -137,15 +145,73 @@ public final class BattleRound {
         revision++;
     }
 
+
+    /**
+     * Executes one authenticated action atomically (caller holds lobby mutex).
+     * Two shots spend one turn; scan reports are visible only to their owner.
+     */
+    public void useAbility(long attacker, String abilityId, List<Cell> targets) {
+        requireParticipant(attacker);
+        if (finished()) throw new IllegalStateException("Match already finished");
+        if (turnPlayerId != attacker) throw new IllegalStateException("Not your turn");
+        if (!(mode.rules().get(RuleSlot.ABILITY) instanceof AbilityRule ability))
+            throw new IllegalStateException("Abilities are disabled in this mode");
+        AbilitySpec spec = ability.catalog().stream()
+            .filter(entry -> entry.id().equals(abilityId)).findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Unknown ability"));
+        if (usedAbilities.get(attacker).contains(spec.id()))
+            throw new IllegalStateException("Ability usage limit reached");
+        long defender = attacker == hostId ? guestId : hostId;
+        AbilityOutcome outcome = ability.resolve(abilityId, targets, mode, boards.get(defender));
+        LinkedHashMap<Cell, ShotRecord> ownShots = shots.get(attacker);
+        // All preconditions are verified BEFORE any shot, usage counter or report changes.
+        if (outcome.shots().stream().anyMatch(ownShots::containsKey))
+            throw new IllegalStateException("Cell already targeted");
+
+        AttackRule attack = (AttackRule) mode.rules().get(RuleSlot.ATTACK);
+        VictoryRule victory = (VictoryRule) mode.rules().get(RuleSlot.VICTORY);
+        TurnRule turns = (TurnRule) mode.rules().get(RuleSlot.TURN);
+        ShotImpact lastImpact = new ShotImpact(false, null);
+        boolean defeated = false;
+        for (Cell cell : outcome.shots()) {
+            Set<Cell> firedCells = new HashSet<>(ownShots.keySet());
+            firedCells.add(cell);
+            lastImpact = attack.resolve(mode, boards.get(defender), Set.copyOf(firedCells), cell);
+            ownShots.put(cell, new ShotRecord(cell.row(), cell.col(),
+                lastImpact.hit(), lastImpact.sunkShip()));
+            defeated = victory.defeated(boards.get(defender), Set.copyOf(firedCells));
+            if (defeated) break; // No further shots after victory.
+        }
+        if (outcome.privateRadarReport() != null)
+            radarReports.get(attacker).add(outcome.privateRadarReport());
+        usedAbilities.get(attacker).add(spec.id());
+        long next = defeated ? attacker : turns.nextPlayer(attacker, defender, lastImpact);
+        if (!defeated && next != hostId && next != guestId)
+            throw new IllegalStateException("Turn rule selected a non-participant");
+        if (defeated) {
+            winnerId = attacker;
+            finishReason = "ALL_SHIPS_SUNK";
+            reconnectDeadlines.clear();
+        }
+        turnPlayerId = next;
+        revision++;
+    }
+
     public BattleResponse view(long player) {
         requireParticipant(player);
         long rival = player == hostId ? guestId : hostId;
+        List<AbilityStatus> available = mode.rules().get(RuleSlot.ABILITY) instanceof AbilityRule rule
+            ? rule.catalog().stream().map(spec -> new AbilityStatus(
+                spec.id(), spec.name(), usedAbilities.get(player).contains(spec.id())
+                    ? 0 : spec.maxUses())).toList()
+            : List.of();
         return new BattleResponse(id, lobbyCode, mode.summary(),
             finished() ? "FINISHED" : "PLAYING", revision,
             finished() ? null : turnPlayerId, winnerId,
             boards.get(player).ships(), List.copyOf(shots.get(player).values()),
             List.copyOf(shots.get(rival).values()), finishReason,
-            Map.copyOf(reconnectDeadlines));
+            Map.copyOf(reconnectDeadlines), available,
+            List.copyOf(radarReports.get(player)));
     }
 
     private void requireParticipant(long player) {
