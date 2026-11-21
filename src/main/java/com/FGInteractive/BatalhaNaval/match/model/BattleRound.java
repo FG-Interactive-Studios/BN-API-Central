@@ -1,6 +1,9 @@
 package com.FGInteractive.BatalhaNaval.match.model;
 
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
+import com.FGInteractive.BatalhaNaval.match.dto.AbilityStatus;
+import com.FGInteractive.BatalhaNaval.match.dto.RadarReport;
+import com.FGInteractive.BatalhaNaval.match.dto.ActiveEffectStatus;
 import com.FGInteractive.BatalhaNaval.match.mode.*;
 import java.util.*;
 import java.time.Duration;
@@ -15,6 +18,14 @@ public final class BattleRound {
     private final long guestId;
     private final Map<Long, Board> boards;
     private final Map<Long, LinkedHashMap<Cell, ShotRecord>> shots = new HashMap<>();
+    private final Map<Long, Map<String,Integer>> abilityUseCounts = new HashMap<>();
+    private final Map<Long, List<RadarReport>> radarReports = new HashMap<>();
+    /** Action counters, not wall time: deterministic even during disconnects. */
+    private final Map<Long,Integer> actionsTaken = new HashMap<>();
+    private final Map<Long,ShieldState> shields = new HashMap<>();
+    private final Map<Long,Integer> lastChanceExpires = new HashMap<>();
+    private final Map<Long,Integer> jamUntilAction = new HashMap<>();
+    private record ShieldState(String shipType, int expiresAfterEnemyAction) {}
     private long turnPlayerId;
     private Long winnerId;
     private String finishReason;
@@ -29,10 +40,17 @@ public final class BattleRound {
         this.mode = Objects.requireNonNull(mode);
         this.hostId = hostId;
         this.guestId = guestId;
-        boards = Map.of(hostId, Objects.requireNonNull(hostBoard),
-                        guestId, Objects.requireNonNull(guestBoard));
+        boards = new HashMap<>();
+        boards.put(hostId, Objects.requireNonNull(hostBoard));
+        boards.put(guestId, Objects.requireNonNull(guestBoard));
+        actionsTaken.put(hostId,0);
+        actionsTaken.put(guestId,0);
         shots.put(hostId, new LinkedHashMap<>());
         shots.put(guestId, new LinkedHashMap<>());
+        abilityUseCounts.put(hostId, new HashMap<>());
+        abilityUseCounts.put(guestId, new HashMap<>());
+        radarReports.put(hostId, new ArrayList<>());
+        radarReports.put(guestId, new ArrayList<>());
         turnPlayerId = hostId; // Explicit deterministic opening rule for V1.
     }
 
@@ -103,49 +121,174 @@ public final class BattleRound {
         revision++;
     }
 
-    public void fire(long attacker, Cell target) {
-        requireParticipant(attacker);
-        if (finished()) throw new IllegalStateException("Match already finished");
-        if (turnPlayerId != attacker) throw new IllegalStateException("Not your turn");
+
+    /** Both ordinary and special attacks pass through the same shield-aware resolver. */
+    private ShotImpact resolveShot(long attacker, long defender, Cell target) {
+        LinkedHashMap<Cell, ShotRecord> fired = shots.get(attacker);
         if (!mode.geometry().contains(target))
             throw new IllegalArgumentException("Target is outside the playable board");
-        var ownShots = shots.get(attacker);
-        if (ownShots.containsKey(target)) throw new IllegalStateException("Cell already targeted");
+        if (fired.containsKey(target) && !fired.get(target).blocked())
+            throw new IllegalStateException("Cell already targeted");
+        Board defending=boards.get(defender);
 
-        long defender = attacker == hostId ? guestId : hostId;
-        Board defendingBoard = boards.get(defender);
-        Set<Cell> firedCells = new HashSet<>(ownShots.keySet());
-        firedCells.add(target);
+        // Shield only absorbs a hit on the selected ship, not a harmless miss.
+        ShieldState shield=shields.get(defender);
+        if(shield!=null && actionsTaken.get(attacker)<shield.expiresAfterEnemyAction()
+            && defending.occupied().contains(target)) {
+            var placement=defending.ships().stream()
+                .filter(ship->ship.type().equals(shield.shipType()))
+                .findFirst().orElse(null);
+            if(placement!=null && mode.placement().footprint(placement,
+                mode.fleet().require(placement.type()),mode.geometry()).contains(target)) {
+                shields.remove(defender);
+                fired.put(target,new ShotRecord(target.row(),target.col(),false,null,true));
+                return new ShotImpact(false,null);
+            }
+        }
 
-        AttackRule attack = (AttackRule) mode.rules().get(RuleSlot.ATTACK);
-        VictoryRule victory = (VictoryRule) mode.rules().get(RuleSlot.VICTORY);
-        TurnRule turns = (TurnRule) mode.rules().get(RuleSlot.TURN);
-        ShotImpact impact = attack.resolve(mode, defendingBoard, Set.copyOf(firedCells), target);
-        boolean defeated = victory.defeated(defendingBoard, Set.copyOf(firedCells));
-        long next = defeated ? attacker : turns.nextPlayer(attacker, defender, impact);
-        if (!defeated && next != hostId && next != guestId)
+        Set<Cell> successful=new HashSet<>();
+        fired.forEach((cell,record)->{if(!record.blocked())successful.add(cell);});
+        successful.add(target);
+        // Last Chance intercepts exactly the shot that would otherwise sink the last ship.
+        if(defending.occupied().contains(target)
+            && lastChanceExpires.getOrDefault(defender,0)>actionsTaken.get(attacker)
+            && successful.containsAll(defending.occupied())) {
+            lastChanceExpires.remove(defender);
+            fired.put(target,new ShotRecord(target.row(),target.col(),false,null,true));
+            return new ShotImpact(false,null);
+        }
+
+        ShotImpact impact=((AttackRule)mode.rules().get(RuleSlot.ATTACK))
+            .resolve(mode,defending,Set.copyOf(successful),target);
+        fired.put(target,new ShotRecord(target.row(),target.col(),
+            impact.hit(),impact.sunkShip()));
+        return impact;
+    }
+
+    private Set<Cell> successfulShots(long player) {
+        Set<Cell> cells=new HashSet<>();
+        shots.get(player).forEach((cell,record)->{if(!record.blocked())cells.add(cell);});
+        return Set.copyOf(cells);
+    }
+
+    private void advanceTurn(long attacker,long defender,ShotImpact impact) {
+        boolean defeated=((VictoryRule)mode.rules().get(RuleSlot.VICTORY))
+            .defeated(boards.get(defender),successfulShots(attacker));
+        long next=defeated?attacker:
+            ((TurnRule)mode.rules().get(RuleSlot.TURN)).nextPlayer(attacker,defender,impact);
+        if(!defeated && next!=hostId && next!=guestId)
             throw new IllegalStateException("Turn rule selected a non-participant");
-
-        ownShots.put(target, new ShotRecord(target.row(), target.col(),
-            impact.hit(), impact.sunkShip()));
-        if (defeated) {
-            winnerId = attacker;
-            finishReason = "ALL_SHIPS_SUNK";
+        if(defeated) {
+            winnerId=attacker;
+            finishReason="ALL_SHIPS_SUNK";
             reconnectDeadlines.clear();
         }
-        turnPlayerId = next;
+        turnPlayerId=next;
+        actionsTaken.merge(attacker,1,Integer::sum);
         revision++;
     }
 
+    public void fire(long attacker, Cell target) {
+        requireParticipant(attacker);
+        if(finished()) throw new IllegalStateException("Match already finished");
+        if(turnPlayerId!=attacker) throw new IllegalStateException("Not your turn");
+        if(!mode.geometry().contains(target))
+            throw new IllegalArgumentException("Target is outside the playable board");
+        var fired=shots.get(attacker);
+        if(fired.containsKey(target)&&!fired.get(target).blocked())
+            throw new IllegalStateException("Cell already targeted");
+        long defender=attacker==hostId?guestId:hostId;
+        ShotImpact impact=resolveShot(attacker,defender,target);
+        advanceTurn(attacker,defender,impact);
+    }
+
+    public void useAbility(long attacker,String abilityId,List<Cell> targets) {
+        requireParticipant(attacker);
+        if(finished()) throw new IllegalStateException("Match already finished");
+        if(turnPlayerId!=attacker) throw new IllegalStateException("Not your turn");
+        if(jamUntilAction.getOrDefault(attacker,0)>actionsTaken.get(attacker))
+            throw new IllegalStateException("Abilities jammed until the next turn");
+        if(!(mode.rules().get(RuleSlot.ABILITY) instanceof AbilityRule ability))
+            throw new IllegalStateException("Abilities are disabled in this mode");
+        AbilitySpec spec=ability.catalog().stream()
+            .filter(a->a.id().equals(abilityId)).findFirst()
+            .orElseThrow(()->new IllegalArgumentException("Unknown ability"));
+        if(abilityUseCounts.get(attacker).getOrDefault(spec.id(),0)>=spec.maxUses())
+            throw new IllegalStateException("Ability usage limit reached");
+
+        long defender=attacker==hostId?guestId:hostId;
+        AbilityContext context=new AbilityContext(mode,boards.get(attacker),boards.get(defender),
+            successfulShots(attacker),successfulShots(defender));
+        AbilityOutcome planned=ability.resolve(abilityId,targets,context);
+        // Validate ALL attack cells first; a failed validation must not spend the turn.
+        for(AbilityEffect effect:planned.effects()) {
+            if(effect instanceof AbilityEffect.Attack attack) {
+                if(new HashSet<>(attack.cells()).size()!=attack.cells().size()
+                    || attack.cells().isEmpty()
+                    || attack.cells().stream().anyMatch(c->!mode.geometry().contains(c)))
+                    throw new IllegalArgumentException("Invalid attack area");
+                if(attack.cells().stream().anyMatch(c->shots.get(attacker).containsKey(c)
+                    && !shots.get(attacker).get(c).blocked()))
+                    throw new IllegalStateException("Cell already targeted");
+            }
+        }
+
+        ShotImpact last=new ShotImpact(false,null);
+        for(AbilityEffect effect:planned.effects()) {
+            if(effect instanceof AbilityEffect.Attack attack) {
+                for(Cell cell:attack.cells()) {
+                    last=resolveShot(attacker,defender,cell);
+                    if(((VictoryRule)mode.rules().get(RuleSlot.VICTORY))
+                        .defeated(boards.get(defender),successfulShots(attacker)))break;
+                }
+            } else if(effect instanceof AbilityEffect.Scan scan) {
+                radarReports.get(attacker).add(scan.report());
+            } else if(effect instanceof AbilityEffect.Shield shield) {
+                shields.put(attacker,new ShieldState(shield.shipType(),
+                    actionsTaken.get(defender)+2));
+            } else if(effect instanceof AbilityEffect.LastChance) {
+                lastChanceExpires.put(attacker,actionsTaken.get(defender)+3);
+            } else if(effect instanceof AbilityEffect.Jam) {
+                jamUntilAction.put(defender,actionsTaken.get(defender)+1);
+            } else if(effect instanceof AbilityEffect.Move move) {
+                boards.put(attacker,move.newBoard());
+            } else {
+                throw new IllegalStateException("Unknown server-side effect");
+            }
+        }
+        abilityUseCounts.get(attacker).merge(spec.id(),1,Integer::sum);
+        advanceTurn(attacker,defender,last);
+    }
+
+
     public BattleResponse view(long player) {
         requireParticipant(player);
-        long rival = player == hostId ? guestId : hostId;
-        return new BattleResponse(id, lobbyCode, mode.summary(),
-            finished() ? "FINISHED" : "PLAYING", revision,
-            finished() ? null : turnPlayerId, winnerId,
-            boards.get(player).ships(), List.copyOf(shots.get(player).values()),
-            List.copyOf(shots.get(rival).values()), finishReason,
-            Map.copyOf(reconnectDeadlines));
+        long rival=player==hostId?guestId:hostId;
+        boolean locked=jamUntilAction.getOrDefault(player,0)>actionsTaken.get(player);
+        List<AbilityStatus> available=mode.rules().get(RuleSlot.ABILITY) instanceof AbilityRule rule
+            ?rule.catalog().stream().map(spec->new AbilityStatus(spec.id(),spec.name(),
+                Math.max(0,spec.maxUses()-abilityUseCounts.get(player).getOrDefault(spec.id(),0)),
+                spec.targetCount(),spec.targetScope(),spec.description(),locked)).toList()
+            :List.of();
+        List<ActiveEffectStatus> effects=new ArrayList<>();
+        ShieldState shield=shields.get(player);
+        if(shield!=null && shield.expiresAfterEnemyAction()>actionsTaken.get(rival))
+            effects.add(new ActiveEffectStatus("hull-shield",
+                "Escudo de casco: "+shield.shipType(),
+                shield.expiresAfterEnemyAction()-actionsTaken.get(rival)));
+        int lastChanceRemaining=lastChanceExpires.getOrDefault(player,0)-actionsTaken.get(rival);
+        if(lastChanceRemaining>0)
+            effects.add(new ActiveEffectStatus("last-chance","Última chance",lastChanceRemaining));
+        int jamRemaining=jamUntilAction.getOrDefault(player,0)-actionsTaken.get(player);
+        if(jamRemaining>0)
+            effects.add(new ActiveEffectStatus("interference","Interferência recebida",jamRemaining));
+        return new BattleResponse(id,lobbyCode,mode.summary(),
+            finished()?"FINISHED":"PLAYING",revision,
+            finished()?null:turnPlayerId,winnerId,
+            boards.get(player).ships(),List.copyOf(shots.get(player).values()),
+            List.copyOf(shots.get(rival).values()),finishReason,
+            Map.copyOf(reconnectDeadlines),available,
+            List.copyOf(radarReports.get(player)),List.copyOf(effects));
     }
 
     private void requireParticipant(long player) {

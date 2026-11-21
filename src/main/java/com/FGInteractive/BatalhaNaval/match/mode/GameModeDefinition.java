@@ -28,6 +28,9 @@ public record GameModeDefinition(
             || !(rules.get(RuleSlot.TURN) instanceof TurnRule)
             || !(rules.get(RuleSlot.VICTORY) instanceof VictoryRule))
             throw new IllegalArgumentException("Combat mode needs executable attack, turn and victory rules");
+        RuleModule abilities = rules.get(RuleSlot.ABILITY);
+        if (!"disabled".equals(abilities.id()) && !(abilities instanceof AbilityRule))
+            throw new IllegalArgumentException("Enabled abilities must have an executable rule");
         if (!placement.supports(geometry) || placement.directions().isEmpty())
             throw new IllegalArgumentException("Placement rule does not support the board geometry");
         if (fleet.occupiedCells() > geometry.cells().size())

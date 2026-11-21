@@ -1,6 +1,7 @@
 package com.FGInteractive.BatalhaNaval.match.service;
 
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
+import com.FGInteractive.BatalhaNaval.match.dto.AbilityRequest;
 import com.FGInteractive.BatalhaNaval.match.dto.FireRequest;
 import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
 import com.FGInteractive.BatalhaNaval.match.model.Cell;
@@ -49,6 +50,32 @@ public class BattleService {
                 battle.finished());
         });
         // Private per-player snapshots. Rival's unhit cells are never included.
+        realtime.sendToPlayer(change.hostId(), "BATTLE_UPDATED", change.host());
+        realtime.sendToPlayer(change.guestId(), "BATTLE_UPDATED", change.guest());
+        if (change.finished()) matchmaking.publishRoomFor(userId);
+        return change.self();
+    }
+
+
+    /** Same lock, error mapping and PRIVATE per-player WebSocket snapshots as shots. */
+    public BattleResponse useAbility(long userId, AbilityRequest request) {
+        if (request == null || request.abilityId() == null || request.targets() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ability and targets are required");
+        }
+        BattleChanges change = matchmaking.withBattleRoom(userId, room -> {
+            BattleRound battle = store.battle(room.code());
+            try {
+                battle.useAbility(userId, request.abilityId(), request.targets());
+            } catch (IllegalArgumentException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
+            }
+            if (battle.finished()) room.finishBattle();
+            return new BattleChanges(room.hostId(), room.guestId(),
+                battle.view(userId), battle.view(room.hostId()), battle.view(room.guestId()),
+                battle.finished());
+        });
         realtime.sendToPlayer(change.hostId(), "BATTLE_UPDATED", change.host());
         realtime.sendToPlayer(change.guestId(), "BATTLE_UPDATED", change.guest());
         if (change.finished()) matchmaking.publishRoomFor(userId);

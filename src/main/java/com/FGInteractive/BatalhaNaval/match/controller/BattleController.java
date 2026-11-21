@@ -1,6 +1,7 @@
 package com.FGInteractive.BatalhaNaval.match.controller;
 
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
+import com.FGInteractive.BatalhaNaval.match.dto.AbilityRequest;
 import com.FGInteractive.BatalhaNaval.match.dto.FireRequest;
 import com.FGInteractive.BatalhaNaval.match.service.BattleService;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +23,12 @@ public class BattleController {
     @PostMapping("/forfeit")
     public BattleResponse forfeit(@AuthenticationPrincipal Jwt jwt) {
         return battles.forfeit(Long.parseLong(jwt.getSubject()));
+    }
+
+    @PostMapping("/abilities")
+    public BattleResponse ability(@AuthenticationPrincipal Jwt jwt,
+                                  @RequestBody AbilityRequest request) {
+        return battles.useAbility(Long.parseLong(jwt.getSubject()), request);
     }
 
     @PostMapping("/shots")
