@@ -19,7 +19,7 @@ public class GameModePresets {
     }
     /** Official base fleet from Game Design GDD v1.2: one ship for each
      * currently delivered class. Class multiplicity is awaiting GD definition;
-     * additional legacy classes remain confined to disabled experimental modes.
+     * legacy classes are not registered in any playable fleet until their\n     * baseline visuals are approved; experimental modes remain disabled by default.
      */
     private static FleetDefinition baseFleet() {
         return new FleetDefinition(List.of(
@@ -33,17 +33,13 @@ public class GameModePresets {
     }
     public static GameModeDefinition quick() {
         return new GameModeDefinition("quick", "Rapido", new RectangularGeometry(8,8),
-            new FleetDefinition(List.of(
-                new ShipDefinition("BATTLESHIP",4),new ShipDefinition("CRUISER",3),
-                new ShipDefinition("DESTROYER",2))),LINEAR,classicMechanics());
+            baseFleet(),LINEAR,classicMechanics());
     }
     /** A triangular mask (square cells), proving that placement is not tied to rectangles. */
     public static GameModeDefinition triangular() {
         return new GameModeDefinition("triangular", "Triangular",
             new TriangularGeometry(10),
-            new FleetDefinition(List.of(
-                new ShipDefinition("BATTLESHIP",4), new ShipDefinition("CRUISER",3),
-                new ShipDefinition("DESTROYER",2))), LINEAR, classicMechanics());
+            baseFleet(), LINEAR, classicMechanics());
     }
     /**
      * Real equilateral triangle tiles, each a distinct hittable cell.
@@ -52,16 +48,13 @@ public class GameModePresets {
     public static GameModeDefinition triangleTiles() {
         return new GameModeDefinition("triangle-tiles", "Triangulo de celulas",
             new TriangularTileGeometry(8),
-            new FleetDefinition(List.of(
-                new ShipDefinition("BATTLESHIP",4), new ShipDefinition("CRUISER",3),
-                new ShipDefinition("DESTROYER",2))), TRIANGLE, classicMechanics());
+            baseFleet(), TRIANGLE, classicMechanics());
     }
     /** 61 playable regular hexagons (radius 4), straight vertical and diagonal ships. */
     public static GameModeDefinition hexagons() {
         return new GameModeDefinition("hexagons", "Hexagonal",
             new HexagonalGeometry(4),
-            new FleetDefinition(List.of(new ShipDefinition("BATTLESHIP",4),
-                new ShipDefinition("CRUISER",3),new ShipDefinition("DESTROYER",2))),
+            baseFleet(),
             HEXAGON, classicMechanics());
     }
 
