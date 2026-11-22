@@ -388,7 +388,7 @@ public final class BattleRound {
             } else if(effect instanceof AbilityEffect.LastChance) {
                 lastChanceExpires.put(attacker,actionsTaken.get(defender)+3);
             } else if(effect instanceof AbilityEffect.Jam) {
-                jamUntilAction.put(defender,actionsTaken.get(defender)+1);
+                jamUntilAction.put(defender,actionsTaken.get(defender)+2);
             } else if(effect instanceof AbilityEffect.Move move) {
                 boards.put(attacker,move.newBoard());
             } else {
