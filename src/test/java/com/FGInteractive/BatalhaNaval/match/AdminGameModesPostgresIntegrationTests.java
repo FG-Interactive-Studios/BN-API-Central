@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -47,13 +48,14 @@ class AdminGameModesPostgresIntegrationTests {
         assertEquals(1,jdbc.update("UPDATE users SET is_admin = TRUE WHERE id = ?",player.id()));
     }
 
-    @AfterEach void restoreCatalog() {
-        // Settings changes survive HTTP requests; reset shared CI database so
-        // existing matchmaking integration tests always see all six modes.
+    @BeforeEach @AfterEach void restoreCatalog() {
+        // Restore GD-approved initial availability around shared-db CI tests.
         jdbc.update("""
-            UPDATE game_mode_settings SET enabled = TRUE,
-                updated_by = NULL, updated_at = CURRENT_TIMESTAMP
-            WHERE mode_id IN ('classic','quick','triangular','triangle-tiles','hexagons','classic-powers')
+            UPDATE game_mode_settings
+               SET enabled = CASE WHEN mode_id IN ('classic','classic-powers')
+                                  THEN TRUE ELSE FALSE END,
+                   updated_by = NULL, updated_at = CURRENT_TIMESTAMP
+             WHERE mode_id IN ('classic','quick','triangular','triangle-tiles','hexagons','classic-powers')
             """);
     }
 
@@ -90,7 +92,7 @@ class AdminGameModesPostgresIntegrationTests {
         mvc.perform(get("/api/admin/game-modes")
             .header("Authorization","Bearer "+ordinary.jwt)).andExpect(status().isForbidden());
         change(ordinary,"quick","{\"enabled\":false}",403);
-        assertEquals(true,jdbc.queryForObject(
+        assertEquals(false,jdbc.queryForObject(
             "SELECT enabled FROM game_mode_settings WHERE mode_id='quick'",Boolean.class));
     }
 
@@ -103,6 +105,7 @@ class AdminGameModesPostgresIntegrationTests {
             .andExpect(jsonPath("$.length()").value(6))
             .andExpect(jsonPath("$[?(@.mode.id == 'hexagons')]").isNotEmpty())
             .andExpect(jsonPath("$[?(@.mode.id == 'classic-powers')]").isNotEmpty());
+        change(admin,"quick","{\"enabled\":true}",200);
         String disabled=change(admin,"quick","{\"enabled\":false}",200);
         assertEquals(false,JsonPath.read(disabled,"$.enabled"));
         assertEquals(admin.id(),((Number)JsonPath.read(disabled,"$.updatedBy")).longValue());
@@ -131,6 +134,7 @@ class AdminGameModesPostgresIntegrationTests {
         Player admin=player(false),host=player(false),guest=player(false),other=player(false);
         appointAdmin(admin);
         try {
+            change(admin,"hexagons","{\"enabled\":true}",200);
             String existing=create(host,"hexagons",201);
             String code=JsonPath.read(existing,"$.code");
             change(admin,"hexagons","{\"enabled\":false}",200);

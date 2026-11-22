@@ -19,6 +19,19 @@ import org.springframework.test.web.servlet.MockMvc;
 @ActiveProfiles("ci")
 class GameModesPostgresIntegrationTests {
     @Autowired MockMvc mvc;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    @org.junit.jupiter.api.BeforeEach @org.junit.jupiter.api.AfterEach
+    void resetCatalog() {
+        jdbc.update("""
+            UPDATE game_mode_settings
+               SET enabled = CASE WHEN mode_id IN ('classic','classic-powers')
+                                  THEN TRUE ELSE FALSE END,
+                   updated_by = NULL
+             WHERE mode_id IN ('classic','classic-powers','quick','triangular','triangle-tiles','hexagons')
+            """);
+    }
+
     private record Player(String jwt) {}
 
     private Player player() throws Exception {
@@ -43,6 +56,9 @@ class GameModesPostgresIntegrationTests {
             .andReturn().getResponse().getContentAsString();
     }
     private String prepare(Player host, Player guest, String modeId) throws Exception {
+        // Legacy geometry tests explicitly opt in to experimental modes.
+        if (!modeId.equals("classic") && !modeId.equals("classic-powers"))
+            jdbc.update("UPDATE game_mode_settings SET enabled=TRUE WHERE mode_id=?",modeId);
         String room=create(host,"{\"modeId\":\""+modeId+"\"}");
         String code=JsonPath.read(room,"$.code");
         mvc.perform(post("/api/matchmaking/lobbies/join")
@@ -73,10 +89,10 @@ class GameModesPostgresIntegrationTests {
         mvc.perform(get("/api/game-modes").header("Authorization","Bearer "+user.jwt))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$[?(@.id == 'classic')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'quick')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'triangular')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'triangle-tiles')]").isNotEmpty())
-            .andExpect(jsonPath("$[?(@.id == 'hexagons')]").isNotEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'quick')]").isEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'triangular')]").isEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'triangle-tiles')]").isEmpty())
+            .andExpect(jsonPath("$[?(@.id == 'hexagons')]").isEmpty())
             .andExpect(jsonPath("$[?(@.id == 'classic-powers')]").isNotEmpty());
     }
 
@@ -92,8 +108,8 @@ class GameModesPostgresIntegrationTests {
             .andExpect(status().isBadRequest());
         String classic=create(host,null);
         assertEquals("classic", JsonPath.read(classic,"$.mode.id"));
-        assertEquals(5,((Number)JsonPath.read(classic,"$.mode.fleet.length()")).intValue());
-        assertEquals(100,((Number)JsonPath.read(classic,"$.mode.geometry.cells.length()")).intValue());
+        assertEquals(3,((Number)JsonPath.read(classic,"$.mode.fleet.length()")).intValue());
+        assertEquals(64,((Number)JsonPath.read(classic,"$.mode.geometry.cells.length()")).intValue());
         leave(host);
     }
 
@@ -104,8 +120,8 @@ class GameModesPostgresIntegrationTests {
                 prepare(host,guest,id);
                 String status=state(host);
                 assertEquals(id,JsonPath.read(status,"$.mode.id"));
-                assertEquals(100,((Number)JsonPath.read(status,"$.mode.geometry.cells.length()")).intValue());
-                assertEquals(5,((Number)JsonPath.read(status,"$.mode.fleet.length()")).intValue());
+                assertEquals(64,((Number)JsonPath.read(status,"$.mode.geometry.cells.length()")).intValue());
+                assertEquals(3,((Number)JsonPath.read(status,"$.mode.fleet.length()")).intValue());
                 for(Player participant:new Player[]{host,guest}) {
                     mvc.perform(post("/api/matches/me/placement/random")
                         .header("Authorization","Bearer "+participant.jwt))
