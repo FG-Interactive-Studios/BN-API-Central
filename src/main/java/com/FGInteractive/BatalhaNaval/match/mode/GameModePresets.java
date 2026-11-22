@@ -17,12 +17,19 @@ public class GameModePresets {
             RuleSlot.VICTORY, new AllShipsSunkRule(),
             RuleSlot.ABILITY, new DeclaredRule("disabled", RuleSlot.ABILITY));
     }
+    /** Official base fleet from Game Design GDD v1.2: one ship for each
+     * currently delivered class. Class multiplicity is awaiting GD definition;
+     * additional legacy classes remain confined to disabled experimental modes.
+     */
+    private static FleetDefinition baseFleet() {
+        return new FleetDefinition(List.of(
+            new ShipDefinition("SEARCH",1),
+            new ShipDefinition("DESTROYER",2),
+            new ShipDefinition("CARRIER",5)));
+    }
     public static GameModeDefinition classic() {
-        return new GameModeDefinition("classic", "Classico",new RectangularGeometry(10,10),
-            new FleetDefinition(List.of(
-                new ShipDefinition("CARRIER",5),new ShipDefinition("BATTLESHIP",4),
-                new ShipDefinition("CRUISER",3),new ShipDefinition("SUBMARINE",3),
-                new ShipDefinition("DESTROYER",2))),LINEAR,classicMechanics());
+        return new GameModeDefinition("classic", "Classico",new RectangularGeometry(8,8),
+            baseFleet(),LINEAR,classicMechanics());
     }
     public static GameModeDefinition quick() {
         return new GameModeDefinition("quick", "Rapido", new RectangularGeometry(8,8),
@@ -58,7 +65,7 @@ public class GameModePresets {
             HEXAGON, classicMechanics());
     }
 
-    /** Opt-in square pilot. The original classic mode deliberately stays without powers. */
+    /** Square powers pilot shares the official 8x8 board and three base classes. */
     public static GameModeDefinition classicPowers() {
         GameModeDefinition base = classic();
         EnumMap<RuleSlot, RuleModule> rules = new EnumMap<>(base.rules());

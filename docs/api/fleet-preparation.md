@@ -25,23 +25,22 @@ Veja [arquitetura e catálogo](../architecture/composable-game-modes.md).
 
 A frota e as células válidas variam conforme o modo; o cliente deve usar
 `mode.geometry.cells` e `mode.fleet` retornados pela API, não
-suposições sobre tabuleiro 10×10 ou cinco embarcações.
+suposições sobre tabuleiro fixo ou frota fixa.
 Use também `mode.geometry.tiles` para renderizar o formato real das
 células e `mode.placementDirections` para as orientações admitidas.
 Consulte [geometrias de tabuleiro](../architecture/board-topologies.md).
 
 ## Frota e coordenadas
 
-No **modo clássico**, tabuleiro 10×10. Índices de linha e coluna de **0 a 9**.
+No **modo clássico**, tabuleiro 8×8. Índices de linha e coluna de **0 a 7**.
 Coordenadas iniciais são a ponta superior/esquerda de cada navio.
 Orientações válidas: `HORIZONTAL`, `VERTICAL`.
 
 | Tipo | Tamanho |
 | --- | ---: |
+| `SEARCH` | 1 |
+| `DESTROYER` | 2 |
 | `CARRIER` | 5 |
-| `BATTLESHIP` | 4 |
-| `CRUISER` | 3 |
-| `SUBMARINE` | 3 |
 | `DESTROYER` | 2 |
 
 **No clássico**, é obrigatório posicionar uma embarcação de cada tipo (17 células).
@@ -66,10 +65,8 @@ Exemplo para substituir toda a frota, **atomicamente**:
 {
   "ships": [
     {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"BATTLESHIP","row":1,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"CRUISER","row":2,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"SUBMARINE","row":3,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"DESTROYER","row":4,"col":0,"orientation":"HORIZONTAL"}
+    {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+    {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
   ]
 }
 ```
@@ -98,10 +95,8 @@ Exemplo simplificado, retornado **somente ao dono da frota**:
   "bothConfirmed":false,
   "yourShips":[
     {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"BATTLESHIP","row":1,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"CRUISER","row":2,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"SUBMARINE","row":3,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"DESTROYER","row":4,"col":0,"orientation":"HORIZONTAL"}
+    {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+    {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
   ]
 }
 ```

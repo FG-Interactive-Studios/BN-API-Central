@@ -7,7 +7,7 @@
 
 ## Modos
 
-`classic-powers` possui geometria retangular 10×10, mesma frota do clássico
+`classic-powers` possui geometria retangular 8×8 e frota de três classes do clássico
 e módulo `square-pilot-v1`, habilitado por padrão na migration V8 quando ainda não configurado. A administração pode desabilitar o modo sem perder a configuração em reinícios.
 `classic`, `quick` e geometrias não quadradas permanecem inalterados. As
 estratégias funcionam também em geometria quadrada 8×8, com testes, sem
