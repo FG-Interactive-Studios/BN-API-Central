@@ -168,7 +168,8 @@ JWT é obrigatória em produção; nenhum segredo real é versionado.
 
 A sala privada entra em `PREPARING` quando os dois jogadores marcam
 prontidão. No novo domínio `match`, cada um posiciona sua própria frota
-definida pelo modo da sala: Clássico 10×10, Rápido 8×8 ou Triangular,
+definida pelo modo da sala: Clássico 8×8 ou Clássico com poderes 8×8 (modos iniciais); Rápido,
+Triangular e Hexagonal ficam cadastrados, mas desativados por padrão,
 com frota variável, posicionamento manual ou geração aleatória.
 Também existe o modo `triangle-tiles`, cujas casas são **triângulos
 equiláteros reais** com vizinhança por aresta e eixos de posicionamento
@@ -235,7 +236,9 @@ As mecânicas `ATTACK`, `TURN` e `VICTORY` agora são estratégias Java
 **executáveis e intercambiáveis**, em todos os modos registrados.
 `MOVEMENT` segue como contrato futuro (sem navios móveis). O módulo `ABILITY`
 oferece um piloto experimental de Tiro Duplo e Radar exclusivamente no modo
-`classic-powers`, desabilitado por padrão. Os demais modos seguem sem poderes. Não existe timeout de turno nesta V1.
+`classic-powers`, habilitado na inicialização do catálogo pela migration V8, sem substituir decisões administrativas existentes. O `classic` mantém tabuleiro 8×8 sem poderes, com as três classes definidas pelo GDD
+(busca 1 casa, contratorpedeiro 2 e porta-aviões 5). Os demais modos seguem sem poderes e
+são desativados por padrão até a homologação dos assets e das regras. Não existe timeout de turno nesta V1.
 
 Contrato: [Motor de batalha](docs/api/battle-engine.md).
 
@@ -432,3 +435,5 @@ git checkout -b feature/user-profile
 
 - O debug local não abre o navegador automaticamente ao final do bootstrap.
 - Se o Docker Desktop não estiver aberto, a aplicação local não tentará iniciar sem aviso explícito.
+
+**Alinhamento GD v1.2:** os dois modos base são `classic` e `classic-powers`, 8×8 com três embarcações: SEARCH (1), DESTROYER (2) e CARRIER (5). Nenhuma das demais classes legadas está habilitada nos modos registrados; os modos experimentais permanecem desativados por padrão. Não existe regra aprovada sobre repetição de classes na composição de três navios; a versão atual usa um de cada, até definição de GD #9. O limite de partida (10 min), turno (20 s), preparação (30 s), reconexão (15 s) e os pontos de habilidade previstos no GDD não são implementados por esta mudança e requerem trabalho próprio no motor.

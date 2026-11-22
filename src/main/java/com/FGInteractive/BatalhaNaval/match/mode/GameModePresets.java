@@ -17,26 +17,30 @@ public class GameModePresets {
             RuleSlot.VICTORY, new AllShipsSunkRule(),
             RuleSlot.ABILITY, new DeclaredRule("disabled", RuleSlot.ABILITY));
     }
+    /** Official base fleet from Game Design GDD v1.2: one ship for each
+     * currently delivered class. Class multiplicity is awaiting GD definition;
+     * legacy classes are not registered in any playable fleet until their
+     * baseline visuals are approved; experimental modes remain disabled by default.
+     */
+    private static FleetDefinition baseFleet() {
+        return new FleetDefinition(List.of(
+            new ShipDefinition("SEARCH",1),
+            new ShipDefinition("DESTROYER",2),
+            new ShipDefinition("CARRIER",5)));
+    }
     public static GameModeDefinition classic() {
-        return new GameModeDefinition("classic", "Classico",new RectangularGeometry(10,10),
-            new FleetDefinition(List.of(
-                new ShipDefinition("CARRIER",5),new ShipDefinition("BATTLESHIP",4),
-                new ShipDefinition("CRUISER",3),new ShipDefinition("SUBMARINE",3),
-                new ShipDefinition("DESTROYER",2))),LINEAR,classicMechanics());
+        return new GameModeDefinition("classic", "Classico",new RectangularGeometry(8,8),
+            baseFleet(),LINEAR,classicMechanics());
     }
     public static GameModeDefinition quick() {
         return new GameModeDefinition("quick", "Rapido", new RectangularGeometry(8,8),
-            new FleetDefinition(List.of(
-                new ShipDefinition("BATTLESHIP",4),new ShipDefinition("CRUISER",3),
-                new ShipDefinition("DESTROYER",2))),LINEAR,classicMechanics());
+            baseFleet(),LINEAR,classicMechanics());
     }
     /** A triangular mask (square cells), proving that placement is not tied to rectangles. */
     public static GameModeDefinition triangular() {
         return new GameModeDefinition("triangular", "Triangular",
             new TriangularGeometry(10),
-            new FleetDefinition(List.of(
-                new ShipDefinition("BATTLESHIP",4), new ShipDefinition("CRUISER",3),
-                new ShipDefinition("DESTROYER",2))), LINEAR, classicMechanics());
+            baseFleet(), LINEAR, classicMechanics());
     }
     /**
      * Real equilateral triangle tiles, each a distinct hittable cell.
@@ -45,20 +49,17 @@ public class GameModePresets {
     public static GameModeDefinition triangleTiles() {
         return new GameModeDefinition("triangle-tiles", "Triangulo de celulas",
             new TriangularTileGeometry(8),
-            new FleetDefinition(List.of(
-                new ShipDefinition("BATTLESHIP",4), new ShipDefinition("CRUISER",3),
-                new ShipDefinition("DESTROYER",2))), TRIANGLE, classicMechanics());
+            baseFleet(), TRIANGLE, classicMechanics());
     }
     /** 61 playable regular hexagons (radius 4), straight vertical and diagonal ships. */
     public static GameModeDefinition hexagons() {
         return new GameModeDefinition("hexagons", "Hexagonal",
             new HexagonalGeometry(4),
-            new FleetDefinition(List.of(new ShipDefinition("BATTLESHIP",4),
-                new ShipDefinition("CRUISER",3),new ShipDefinition("DESTROYER",2))),
+            baseFleet(),
             HEXAGON, classicMechanics());
     }
 
-    /** Opt-in square pilot. The original classic mode deliberately stays without powers. */
+    /** Square powers pilot shares the official 8x8 board and three base classes. */
     public static GameModeDefinition classicPowers() {
         GameModeDefinition base = classic();
         EnumMap<RuleSlot, RuleModule> rules = new EnumMap<>(base.rules());

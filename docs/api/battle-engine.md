@@ -37,7 +37,7 @@ entradas/saídas do lobby e comandos de preparação pelo mesmo lock de instânc
   O lobby muda para `FINISHED` e futuros tiros são recusados.
 - `stationary` e `disabled` continuam como declarações nos cinco modos
   originais; não há movimento, buffs nem debuffs. O sexto modo
-  `classic-powers`, desabilitado por padrão, oferece [dois poderes
+  `classic-powers`, habilitado por padrão, oferece [oito poderes
   experimentais](square-abilities.md) e um endpoint específico para ativação.
 - `classic`, `quick` e `triangular` compartilham as políticas acima, mas
   usam suas geometrias e frotas específicas. O triangular usa **máscara de
@@ -53,8 +53,7 @@ falham na construção, impedindo modos falsamente jogáveis.
 Novos modos poderão incluir, por exemplo, turno adicional ao acertar ou
 nova vitória, implementando essas interfaces e associando-as à definição
 do modo. Poderes vinculados a embarcações, cooldowns, energia e efeitos duradouros
-continuam como etapas futuras do GDD. Apenas o piloto de Tiro Duplo e Radar
-possui ações autoritativas.
+continuam como etapas futuras do GDD. Os oito poderes pilotos possuem ações autoritativas, ainda sujeitos à revisão pelo GD.
 
 ## Visão específica de cada jogador
 

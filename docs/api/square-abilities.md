@@ -3,12 +3,12 @@
 > **Atenção:** efeitos abaixo são interpretações técnicas experimentais baseadas nos nomes
 > das oito habilidades da issue [Game Design #32](https://github.com/FG-Interactive-Studios/BN-GameDesign/issues/32).
 > O GDD foi revisado depois da planilha original e não estava acessível.
-> **Não são regras finais aprovadas**. Validar com GD antes de habilitar o modo para jogadores.
+> **Não são regras finais aprovadas**. Validar com GD antes da homologação final.
 
 ## Modos
 
-`classic-powers` possui geometria retangular 10×10, mesma frota do clássico
-e módulo `square-pilot-v1`, desabilitado por padrão pela administração.
+`classic-powers` possui geometria retangular 8×8 e frota de três classes do clássico
+e módulo `square-pilot-v1`, habilitado por padrão na migration V8 quando ainda não configurado. A administração pode desabilitar o modo sem perder a configuração em reinícios.
 `classic`, `quick` e geometrias não quadradas permanecem inalterados. As
 estratégias funcionam também em geometria quadrada 8×8, com testes, sem
 adicionar implicitamente poderes ao modo rápido existente.
@@ -74,4 +74,4 @@ pode ser atacada de novo. O frontend deve ignorá-lo nas marcas permanentes.
 - Conferir condições e balanceamento contra a versão mais recente do GDD.
 - Validar em QA a movimentação, os poderes defensivos e o combate em
   smartphones e desktops, incluindo reconexão e eventos WebSocket.
-- Somente o administrador deve habilitar `classic-powers` no catálogo.
+- O catálogo inicial inclui `classic-powers`; a administração pode desabilitá-lo enquanto o GDD e a homologação final estão pendentes.

@@ -112,10 +112,8 @@ class MatchPlacementPostgresIntegrationTests {
         return """
             {"ships":[
               {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"BATTLESHIP","row":1,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"CRUISER","row":2,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"SUBMARINE","row":3,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"DESTROYER","row":4,"col":0,"orientation":"HORIZONTAL"}
+              {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+              {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
             ]}
             """;
     }
@@ -145,7 +143,7 @@ class MatchPlacementPostgresIntegrationTests {
                 .header("Authorization","Bearer " + guest.jwt))
                 .andExpect(status().isConflict());
             ready(guest);
-            assertEquals(10, ((Number)JsonPath.read(state(host),"$.boardSize")).intValue());
+            assertEquals(8, ((Number)JsonPath.read(state(host),"$.boardSize")).intValue());
             mvc.perform(get("/api/matches/me/placement")
                 .header("Authorization","Bearer " + outsider.jwt))
                 .andExpect(status().isNotFound());
@@ -162,7 +160,7 @@ class MatchPlacementPostgresIntegrationTests {
             String placementId=JsonPath.read(initial,"$.preparationId");
             assertEquals(false, JsonPath.read(initial,"$.fleetPlaced"));
             String host=set(a,fleet());
-            assertEquals(5, ((Number)JsonPath.read(host,"$.yourShips.length()")).intValue());
+            assertEquals(3, ((Number)JsonPath.read(host,"$.yourShips.length()")).intValue());
             assertEquals(true, JsonPath.read(host,"$.fleetPlaced"));
             assertEquals(false, JsonPath.read(host,"$.opponentPlaced"));
             String guest=state(b);
@@ -175,7 +173,7 @@ class MatchPlacementPostgresIntegrationTests {
             assertFalse(guest.contains("\"orientation\""));
 
             String auto=random(b);
-            assertEquals(5, ((Number)JsonPath.read(auto,"$.yourShips.length()")).intValue());
+            assertEquals(3, ((Number)JsonPath.read(auto,"$.yourShips.length()")).intValue());
             assertEquals(true, JsonPath.read(state(a),"$.opponentPlaced"));
             String firstConfirmation=confirm(a);
             assertEquals(true, JsonPath.read(firstConfirmation,"$.fleetConfirmed"));
@@ -184,8 +182,8 @@ class MatchPlacementPostgresIntegrationTests {
             assertEquals(true, JsonPath.read(finalConfirmation,"$.bothConfirmed"));
             assertEquals(true, JsonPath.read(state(a),"$.opponentConfirmed"));
             assertEquals(placementId, (String)JsonPath.read(state(a),"$.preparationId"));
-            assertEquals(5, ((Number)JsonPath.read(state(a),"$.yourShips.length()")).intValue());
-            assertEquals(5, ((Number)JsonPath.read(state(b),"$.yourShips.length()")).intValue());
+            assertEquals(3, ((Number)JsonPath.read(state(a),"$.yourShips.length()")).intValue());
+            assertEquals(3, ((Number)JsonPath.read(state(b),"$.yourShips.length()")).intValue());
             long revision=((Number)JsonPath.read(finalConfirmation,"$.revision")).longValue();
             assertEquals(revision, ((Number)JsonPath.read(confirm(b),"$.revision")).longValue());
             mvc.perform(put("/api/matches/me/placement")
@@ -206,8 +204,8 @@ class MatchPlacementPostgresIntegrationTests {
             long revision=((Number)JsonPath.read(valid,"$.revision")).longValue();
             for(String payload : java.util.List.of(
                 "{}", "{\"ships\":[]}", "{\"ships\":null}",
-                fleet().replace("\"row\":0","\"row\":10"),
-                fleet().replace("\"col\":0","\"col\":9"),
+                fleet().replace("\"row\":0","\"row\":8"),
+                fleet().replace("\"col\":0","\"col\":5"),
                 fleet().replace("\"row\":1","\"row\":0"),
                 fleet().replace("\"type\":\"DESTROYER\"","\"type\":\"CARRIER\""),
                 fleet().replace("\"orientation\":\"HORIZONTAL\"","\"orientation\":null"),
@@ -221,7 +219,7 @@ class MatchPlacementPostgresIntegrationTests {
                     .andExpect(status().isBadRequest());
                 assertEquals(revision, ((Number)JsonPath.read(state(a),"$.revision")).longValue());
             }
-            assertEquals(5,((Number)JsonPath.read(state(a),"$.yourShips.length()")).intValue());
+            assertEquals(3,((Number)JsonPath.read(state(a),"$.yourShips.length()")).intValue());
             mvc.perform(post("/api/matches/me/placement/confirm")
                 .header("Authorization","Bearer " + b.jwt))
                 .andExpect(status().isConflict());
@@ -256,21 +254,21 @@ class MatchPlacementPostgresIntegrationTests {
                 set(host,fleet());
                 String eventForHost=a.listener.nextType("PREPARATION_UPDATED");
                 String eventForGuest=b.listener.nextType("PREPARATION_UPDATED");
-                assertEquals(5, ((Number)JsonPath.read(eventForHost,"$.data.yourShips.length()")).intValue());
+                assertEquals(3, ((Number)JsonPath.read(eventForHost,"$.data.yourShips.length()")).intValue());
                 assertEquals(0, ((Number)JsonPath.read(eventForGuest,"$.data.yourShips.length()")).intValue());
                 assertEquals(true, JsonPath.read(eventForGuest,"$.data.opponentPlaced"));
                 // The mode's legal directions may be disclosed; the rival's fleet may not.
                 assertEquals(0,((Number)JsonPath.read(eventForGuest,
                     "$.data.yourShips.length()")).intValue());
                 random(guest);
-                assertEquals(5, ((Number)JsonPath.read(b.listener.nextType("PREPARATION_UPDATED"),
+                assertEquals(3, ((Number)JsonPath.read(b.listener.nextType("PREPARATION_UPDATED"),
                     "$.data.yourShips.length()")).intValue());
                 String view=a.listener.nextType("PREPARATION_UPDATED");
                 assertEquals(true, JsonPath.read(view,"$.data.opponentPlaced"));
-                assertEquals(5, ((Number)JsonPath.read(view,"$.data.yourShips.length()")).intValue());
+                assertEquals(3, ((Number)JsonPath.read(view,"$.data.yourShips.length()")).intValue());
             }
             // Reconnecting does not erase a fleet, and GET restores the own board.
-            assertEquals(5,((Number)JsonPath.read(state(host),"$.yourShips.length()")).intValue());
+            assertEquals(3,((Number)JsonPath.read(state(host),"$.yourShips.length()")).intValue());
         } finally { leave(host); }
     }
 

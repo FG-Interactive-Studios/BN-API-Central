@@ -16,13 +16,13 @@ class BattleTerminationTests {
     private BattleRound newGame() {
         var mode = GameModePresets.quick();
         var first = Board.from(mode, List.of(
-            new ShipPlacement("BATTLESHIP",0,0,Orientation.HORIZONTAL),
-            new ShipPlacement("CRUISER",1,0,Orientation.HORIZONTAL),
-            new ShipPlacement("DESTROYER",2,0,Orientation.HORIZONTAL)));
+            new ShipPlacement("CARRIER",0,0,Orientation.HORIZONTAL),
+            new ShipPlacement("DESTROYER",1,0,Orientation.HORIZONTAL),
+            new ShipPlacement("SEARCH",2,0,Orientation.HORIZONTAL)));
         var second = Board.from(mode, List.of(
-            new ShipPlacement("BATTLESHIP",4,0,Orientation.HORIZONTAL),
-            new ShipPlacement("CRUISER",5,0,Orientation.HORIZONTAL),
-            new ShipPlacement("DESTROYER",6,0,Orientation.HORIZONTAL)));
+            new ShipPlacement("CARRIER",4,0,Orientation.HORIZONTAL),
+            new ShipPlacement("DESTROYER",5,0,Orientation.HORIZONTAL),
+            new ShipPlacement("SEARCH",6,0,Orientation.HORIZONTAL)));
         return new BattleRound("ABCD23",mode,10,11,first,second);
     }
 

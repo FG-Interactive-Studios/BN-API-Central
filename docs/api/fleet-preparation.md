@@ -17,34 +17,32 @@ confirmação, jamais os navios ou suas coordenadas.
 
 O modo é fixado no momento em que o anfitrião cria a sala:
 `POST /api/matchmaking/lobbies` com corpo opcional
-`{"modeId":"classic"}`, `{"modeId":"quick"}` ou
-`{"modeId":"triangular"}` ou `{"modeId":"triangle-tiles"}`.
+`{"modeId":"classic"}` ou `{"modeId":"classic-powers"}`. Os outros modos
+continuam registrados no painel administrativo, mas desativados por padrão.
 O padrão é `classic`.
 `GET /api/game-modes` lista as definições públicas disponíveis.
 Veja [arquitetura e catálogo](../architecture/composable-game-modes.md).
 
 A frota e as células válidas variam conforme o modo; o cliente deve usar
 `mode.geometry.cells` e `mode.fleet` retornados pela API, não
-suposições sobre tabuleiro 10×10 ou cinco embarcações.
+suposições sobre tabuleiro fixo ou frota fixa.
 Use também `mode.geometry.tiles` para renderizar o formato real das
 células e `mode.placementDirections` para as orientações admitidas.
 Consulte [geometrias de tabuleiro](../architecture/board-topologies.md).
 
 ## Frota e coordenadas
 
-No **modo clássico**, tabuleiro 10×10. Índices de linha e coluna de **0 a 9**.
+No **modo clássico**, tabuleiro 8×8. Índices de linha e coluna de **0 a 7**.
 Coordenadas iniciais são a ponta superior/esquerda de cada navio.
 Orientações válidas: `HORIZONTAL`, `VERTICAL`.
 
 | Tipo | Tamanho |
 | --- | ---: |
-| `CARRIER` | 5 |
-| `BATTLESHIP` | 4 |
-| `CRUISER` | 3 |
-| `SUBMARINE` | 3 |
+| `SEARCH` | 1 |
 | `DESTROYER` | 2 |
+| `CARRIER` | 5 |
 
-**No clássico**, é obrigatório posicionar uma embarcação de cada tipo (17 células).
+**Nos modos iniciais**, a API exige provisoriamente uma embarcação de cada classe (8 células no total), enquanto o GD conclui a composição válida em #9.
 Nos demais modos, a frota válida é definida por `mode.fleet`.
 Não pode ultrapassar os limites do tabuleiro nem sobrepor outro navio.
 **Adjacência é permitida.**
@@ -66,10 +64,8 @@ Exemplo para substituir toda a frota, **atomicamente**:
 {
   "ships": [
     {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"BATTLESHIP","row":1,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"CRUISER","row":2,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"SUBMARINE","row":3,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"DESTROYER","row":4,"col":0,"orientation":"HORIZONTAL"}
+    {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+    {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
   ]
 }
 ```
@@ -89,7 +85,7 @@ Exemplo simplificado, retornado **somente ao dono da frota**:
 {
   "lobbyCode":"ABC234",
   "preparationId":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  "boardSize":10,
+  "boardSize":8,
   "revision":3,
   "fleetPlaced":true,
   "fleetConfirmed":false,
@@ -98,17 +94,15 @@ Exemplo simplificado, retornado **somente ao dono da frota**:
   "bothConfirmed":false,
   "yourShips":[
     {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"BATTLESHIP","row":1,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"CRUISER","row":2,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"SUBMARINE","row":3,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"DESTROYER","row":4,"col":0,"orientation":"HORIZONTAL"}
+    {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+    {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
   ]
 }
 ```
 
 `yourShips` **nunca inclui posições do oponente**. Se o próprio
 tabuleiro estiver vazio, retorna `[]`. O frontend pode desenhar as
-células ocupadas a partir das posições dos cinco navios. A API preserva
+células ocupadas a partir das posições das três embarcações. A API preserva
 o estado autoritativo para a futura etapa de tiros.
 
 O campo `bothConfirmed` muda para `true` quando ambos confirmam.
