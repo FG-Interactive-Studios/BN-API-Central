@@ -12,28 +12,26 @@ class BoardPlacementTests {
     private static List<ShipPlacement> valid() {
         return List.of(
             new ShipPlacement("CARRIER", 0, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("BATTLESHIP", 1, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("CRUISER", 2, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("SUBMARINE", 3, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("DESTROYER", 4, 0, Orientation.HORIZONTAL));
+            new ShipPlacement("DESTROYER", 1, 0, Orientation.HORIZONTAL),
+            new ShipPlacement("SEARCH", 2, 0, Orientation.HORIZONTAL));
     }
 
-    @Test void acceptsExactlyFiveShipsAndSeventeenUniqueCells() {
+    @Test void acceptsOfficialThreeShipsAndEightUniqueCells() {
         Board board = Board.from(valid());
-        assertEquals(5, board.ships().size());
-        assertEquals(17, board.occupied().size());
+        assertEquals(3, board.ships().size());
+        assertEquals(8, board.occupied().size());
         assertTrue(board.occupied().contains(new Cell(0,4)));
-        assertFalse(board.occupied().contains(new Cell(9,9)));
+        assertFalse(board.occupied().contains(new Cell(7,7)));
         assertThrows(UnsupportedOperationException.class, () -> board.ships().clear());
         assertThrows(UnsupportedOperationException.class,
-            () -> board.occupied().add(new Cell(9,9)));
+            () -> board.occupied().add(new Cell(7,7)));
     }
 
     @Test void rejectsIncompleteDuplicateOrNullFleetInputs() {
         assertThrows(IllegalArgumentException.class, () -> Board.from(null));
-        assertThrows(IllegalArgumentException.class, () -> Board.from(valid().subList(0,4)));
+        assertThrows(IllegalArgumentException.class, () -> Board.from(valid().subList(0,2)));
         List<ShipPlacement> duplicated = new ArrayList<>(valid());
-        duplicated.set(4, new ShipPlacement("CARRIER", 5,0,Orientation.HORIZONTAL));
+        duplicated.set(2, new ShipPlacement("CARRIER", 5,0,Orientation.HORIZONTAL));
         assertThrows(IllegalArgumentException.class, () -> Board.from(duplicated));
         for (ShipPlacement invalid : List.of(
             new ShipPlacement(null,0,0,Orientation.HORIZONTAL),
@@ -48,14 +46,14 @@ class BoardPlacementTests {
 
     @Test void rejectsOverlapAndOutOfBoundsInBothOrientations() {
         List<ShipPlacement> overlapped = new ArrayList<>(valid());
-        overlapped.set(1, new ShipPlacement("BATTLESHIP",0,3,Orientation.VERTICAL));
+        overlapped.set(1, new ShipPlacement("DESTROYER",0,3,Orientation.VERTICAL));
         assertThrows(IllegalArgumentException.class, () -> Board.from(overlapped));
 
         for (ShipPlacement invalid : List.of(
-            new ShipPlacement("CARRIER",0,6,Orientation.HORIZONTAL),
-            new ShipPlacement("CARRIER",6,0,Orientation.VERTICAL),
+            new ShipPlacement("CARRIER",0,4,Orientation.HORIZONTAL),
+            new ShipPlacement("CARRIER",4,0,Orientation.VERTICAL),
             new ShipPlacement("CARRIER",-1,0,Orientation.HORIZONTAL),
-            new ShipPlacement("CARRIER",10,0,Orientation.VERTICAL),
+            new ShipPlacement("CARRIER",8,0,Orientation.VERTICAL),
             new ShipPlacement("CARRIER",0,-1,Orientation.HORIZONTAL))) {
             List<ShipPlacement> replacements = new ArrayList<>(valid());
             replacements.set(0, invalid);
@@ -68,9 +66,9 @@ class BoardPlacementTests {
     @Test void generatesManyLegalRandomFleets() {
         for (int i = 0; i < 150; i++) {
             Board generated = Board.random();
-            assertEquals(5, generated.ships().size());
-            assertEquals(17, generated.occupied().size());
-            assertEquals(17, Board.from(generated.ships()).occupied().size());
+            assertEquals(3, generated.ships().size());
+            assertEquals(8, generated.occupied().size());
+            assertEquals(8, Board.from(generated.ships()).occupied().size());
         }
     }
 
@@ -79,7 +77,7 @@ class BoardPlacementTests {
         Board a = Board.from(valid());
         Board b = Board.random();
         round.place(10, a);
-        assertEquals(5, round.view(10).yourShips().size());
+        assertEquals(3, round.view(10).yourShips().size());
         assertTrue(round.view(11).yourShips().isEmpty());
         assertTrue(round.view(11).opponentPlaced());
         assertFalse(round.view(11).opponentConfirmed());

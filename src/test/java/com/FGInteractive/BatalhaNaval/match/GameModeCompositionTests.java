@@ -14,10 +14,10 @@ class GameModeCompositionTests {
         GameModeDefinition classic = GameModePresets.classic();
         GameModeDefinition quick = GameModePresets.quick();
         GameModeDefinition triangle = GameModePresets.triangular();
-        assertEquals(100, classic.geometry().cells().size());
+        assertEquals(64, classic.geometry().cells().size());
         assertEquals(64, quick.geometry().cells().size());
         assertEquals(55, triangle.geometry().cells().size());
-        assertEquals(17, Board.random(classic).occupied().size());
+        assertEquals(8, Board.random(classic).occupied().size());
         assertEquals(9, Board.random(quick).occupied().size());
         assertEquals(9, Board.random(triangle).occupied().size());
         assertEquals("linear", triangle.placement().id());

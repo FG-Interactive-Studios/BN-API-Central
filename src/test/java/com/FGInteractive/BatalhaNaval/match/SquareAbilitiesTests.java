@@ -29,7 +29,7 @@ class SquareAbilitiesTests {
         assertEquals("disabled", GameModePresets.classic().rules().get(RuleSlot.ABILITY).id());
         assertEquals("disabled", GameModePresets.quick().rules().get(RuleSlot.ABILITY).id());
         assertEquals("square-pilot-v1", GameModePresets.classicPowers().rules().get(RuleSlot.ABILITY).id());
-        assertEquals(100, GameModePresets.classicPowers().geometry().cells().size());
+        assertEquals(64, GameModePresets.classicPowers().geometry().cells().size());
         assertThrows(IllegalArgumentException.class,
             () -> new GameModeRegistry(List.of(GameModePresets.classic(), pilot(4, 5))));
         GameModeDefinition base = GameModePresets.triangular();
