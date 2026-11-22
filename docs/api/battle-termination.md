@@ -36,7 +36,7 @@ válido e aberto; não basta um JWT armazenado ou um request REST isolado.
 
 - Quando a partida começa com um jogador sem socket, ou quando seu
   **último** socket cai, começa a contagem de reconexão.
-- Prazo padrão **120 segundos** (configurável por
+- Prazo padrão **15 segundos** (configurável por
   `MATCH_DISCONNECT_GRACE_SECONDS`, entre 1 e 3600).
 - A simples queda **não concede vitória nem perde a vaga**.
   Reabrir o WebSocket autenticado antes do prazo cancela o deadline
@@ -48,7 +48,7 @@ válido e aberto; não basta um JWT armazenado ou um request REST isolado.
   conveniência. O jogo espera enquanto o outro ainda está dentro
   da própria tolerância; quando **ambos os prazos expirarem**, termina
   **sem vencedor**: `finishReason="BOTH_DISCONNECTED"`.
-- O watchdog roda a cada cerca de **5 segundos**
+- O watchdog de prazos roda a cada cerca de **500 ms**
   (`MATCH_DISCONNECT_SWEEP_MS`), portanto a finalização pode ocorrer
   alguns segundos depois do deadline.
 - Eventos de conexão e watchdog compartilham o lock do lobby com os
@@ -56,7 +56,7 @@ válido e aberto; não basta um JWT armazenado ou um request REST isolado.
   por ações concorrentes.
 
 A regra de timeout **não se aplica a `WAITING` nem `PREPARING`**.
-O frontend deve abrir o WebSocket **antes de começar a partida**;
+Com o GDD v1.2, o relógio de turno e o da partida pausam enquanto há desconexão. O frontend deve abrir o WebSocket **antes de começar a partida**;
 se nenhum socket estiver conectado ao entrar em `PLAYING`, o relógio
 já começa. Esse comportamento é intencional.
 
@@ -102,7 +102,5 @@ novo ticket WebSocket e recuperação via `GET /api/matches/me`.
 ## Escopo do projeto acadêmico
 
 O estado é em memória, com **uma instância da API**; reiniciar o
-processo descarta partidas e deadlines. Não há cron em banco,
-multi-instância, ranking, penalidade persistente nem timeout **por turno**.
-Este é um timeout **de presença**, não de tempo de resposta ao tiro.
+processo descarta partidas e deadlines. Não há cron em banco nem multi-instância. Os modos base possuem timeout de turno e de partida, descritos em [GDD v1.2 — regras](gdd-timers-and-ability-points.md).
 Não foram adicionadas dependências, migrations ou serviços externos.

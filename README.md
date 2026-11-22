@@ -191,7 +191,7 @@ A [arquitetura de modos de jogo](docs/architecture/composable-game-modes.md)
 permite combinar geometria, frota e regras de posicionamento, preparando
 extensões futuras para tiro, movimento, poderes e debuffs. O motor de
 batalha já executa ataque, alternância de turnos e vitória. Movimento e
-debuffs ainda não estão disponíveis; Tiro Duplo e Radar têm um
+debuffs ainda não estão disponíveis; oito habilidades têm um
 [piloto isolado](docs/api/square-abilities.md) para o tabuleiro quadrado.
 
 ## Disponibilidade administrativa dos modos
@@ -235,10 +235,10 @@ vitória. `BATTLE_UPDATED` publica snapshots privados por jogador, com
 As mecânicas `ATTACK`, `TURN` e `VICTORY` agora são estratégias Java
 **executáveis e intercambiáveis**, em todos os modos registrados.
 `MOVEMENT` segue como contrato futuro (sem navios móveis). O módulo `ABILITY`
-oferece um piloto experimental de Tiro Duplo e Radar exclusivamente no modo
+oferece oito poderes experimentais exclusivamente no modo
 `classic-powers`, habilitado na inicialização do catálogo pela migration V8, sem substituir decisões administrativas existentes. O `classic` mantém tabuleiro 8×8 sem poderes, com as três classes definidas pelo GDD
 (busca 1 casa, contratorpedeiro 2 e porta-aviões 5). Os demais modos seguem sem poderes e
-são desativados por padrão até a homologação dos assets e das regras. Não existe timeout de turno nesta V1.
+são desativados por padrão até a homologação dos assets e das regras. Nos modos base, os prazos de turno e partida e os pontos de habilidade seguem as regras de GDD v1.2.
 
 Contrato: [Motor de batalha](docs/api/battle-engine.md).
 
@@ -246,7 +246,7 @@ Contrato: [Motor de batalha](docs/api/battle-engine.md).
 tratadas separadamente. Em `PLAYING`, `POST /api/matches/me/forfeit`
 ou `DELETE /api/matchmaking/lobbies/me` produzem derrota por abandono,
 mantendo o resultado consultável até os participantes saírem.
-Desconexão inicia tolerância de 120 s por padrão, cancelada ao reconectar;
+Desconexão inicia tolerância de 15 s por padrão, cancelada ao reconectar;
 o servidor não declara vencedor arbitrário se ambos desaparecerem.
 Veja [encerramento e reconexão](docs/api/battle-termination.md).
 
@@ -436,4 +436,9 @@ git checkout -b feature/user-profile
 - O debug local não abre o navegador automaticamente ao final do bootstrap.
 - Se o Docker Desktop não estiver aberto, a aplicação local não tentará iniciar sem aviso explícito.
 
-**Alinhamento GD v1.2:** os dois modos base são `classic` e `classic-powers`, 8×8 com três embarcações: SEARCH (1), DESTROYER (2) e CARRIER (5). Nenhuma das demais classes legadas está habilitada nos modos registrados; os modos experimentais permanecem desativados por padrão. Não existe regra aprovada sobre repetição de classes na composição de três navios; a versão atual usa um de cada, até definição de GD #9. O limite de partida (10 min), turno (20 s), preparação (30 s), reconexão (15 s) e os pontos de habilidade previstos no GDD não são implementados por esta mudança e requerem trabalho próprio no motor.
+**Alinhamento GD v1.2:** os dois modos base são `classic` e `classic-powers`, 8×8 com três embarcações: SEARCH (1), DESTROYER (2) e CARRIER (5). Nenhuma das demais classes legadas está habilitada nos modos registrados; os modos experimentais permanecem desativados por padrão. Não existe regra aprovada sobre repetição de classes na composição de três navios; a versão atual usa um de cada, até definição de GD #9. O limite de partida (10 min), turno (20 s), preparação (30 s), reconexão (15 s) e os pontos de habilidade foram implementados em uma PR posterior de relógios; recompensas e aprovação da composição de frota permanecem pendentes.
+
+
+## Relógios e pontos de habilidade (GDD v1.2)
+
+Nos modos base, a API tem preparação de 30 s, turno de 20 s, duração de 10 min, reconexão de 15 s e sorteio de quatro pontos de habilidade por tabuleiro no modo com poderes. O servidor publica deadlines e resultados em snapshots privados e executa watchdog com mutex compartilhado. [Contrato completo](docs/api/gdd-timers-and-ability-points.md). Recompensas e balanceamento definitivo continuam pendentes.

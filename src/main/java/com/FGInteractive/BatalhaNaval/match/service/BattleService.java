@@ -9,6 +9,7 @@ import com.FGInteractive.BatalhaNaval.matchmaking.model.LobbyRoom;
 import com.FGInteractive.BatalhaNaval.matchmaking.service.MatchmakingService;
 import com.FGInteractive.BatalhaNaval.shared.websocket.RealtimeWebSocketHandler;
 import org.springframework.http.HttpStatus;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -27,18 +28,20 @@ public class BattleService {
     }
 
     public BattleResponse mine(long userId) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         return matchmaking.withBattleRoom(userId,
             room -> store.battle(room.code()).view(userId));
     }
 
     public BattleResponse fire(long userId, FireRequest request) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         if (request == null || request.row() == null || request.col() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Shot coordinates are required");
         }
         BattleChanges change = matchmaking.withBattleRoom(userId, room -> {
             BattleRound battle = store.battle(room.code());
             try {
-                battle.fire(userId, new Cell(request.row(), request.col()));
+                battle.fireAt(userId, new Cell(request.row(), request.col()),Instant.now());
             } catch (IllegalArgumentException ex) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
             } catch (IllegalStateException ex) {
@@ -59,13 +62,14 @@ public class BattleService {
 
     /** Same lock, error mapping and PRIVATE per-player WebSocket snapshots as shots. */
     public BattleResponse useAbility(long userId, AbilityRequest request) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         if (request == null || request.abilityId() == null || request.targets() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ability and targets are required");
         }
         BattleChanges change = matchmaking.withBattleRoom(userId, room -> {
             BattleRound battle = store.battle(room.code());
             try {
-                battle.useAbility(userId, request.abilityId(), request.targets());
+                battle.useAbilityAt(userId, request.abilityId(), request.targets(),Instant.now());
             } catch (IllegalArgumentException ex) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
             } catch (IllegalStateException ex) {
@@ -84,6 +88,7 @@ public class BattleService {
 
     /** Authenticated intent only: loser is derived from the JWT subject. */
     public BattleResponse forfeit(long userId) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         BattleChanges change = matchmaking.withBattleRoom(userId, room -> {
             BattleRound battle = store.battle(room.code());
             boolean changed;

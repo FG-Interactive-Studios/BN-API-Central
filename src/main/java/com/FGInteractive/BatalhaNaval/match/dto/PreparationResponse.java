@@ -3,6 +3,7 @@ package com.FGInteractive.BatalhaNaval.match.dto;
 import com.FGInteractive.BatalhaNaval.match.mode.ModeSummary;
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 public record PreparationResponse(
     String lobbyCode,
@@ -15,5 +16,6 @@ public record PreparationResponse(
     boolean opponentConfirmed,
     boolean bothConfirmed,
     List<PlaceFleetRequest.ShipPlacement> yourShips,
-    ModeSummary mode
+    ModeSummary mode,
+    Instant placementDeadlineAt
 ) {}

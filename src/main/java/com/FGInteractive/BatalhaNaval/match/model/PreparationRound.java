@@ -3,6 +3,8 @@ package com.FGInteractive.BatalhaNaval.match.model;
 import com.FGInteractive.BatalhaNaval.match.dto.PreparationResponse;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
 import java.util.*;
+import java.time.Duration;
+import java.time.Instant;
 
 /** Mutable per-lobby state; guarded by MatchmakingService's shared mutex. */
 public final class PreparationRound {
@@ -14,18 +16,45 @@ public final class PreparationRound {
     private final Map<Long, Board> fleets = new HashMap<>();
     private final Set<Long> confirmed = new HashSet<>();
     private long revision = 1;
+    private final Instant placementDeadlineAt;
 
+    /** Isolated legacy tests can still construct untimed rounds. */
     public PreparationRound(String lobbyCode, long hostId, long guestId,
                             GameModeDefinition mode) {
+        this(lobbyCode,hostId,guestId,mode,null,null);
+    }
+    public PreparationRound(String lobbyCode, long hostId, long guestId,
+                            GameModeDefinition mode, Instant startedAt, Duration limit) {
         if (hostId == guestId) throw new IllegalArgumentException("Players must be distinct");
+        if ((startedAt == null) != (limit == null))
+            throw new IllegalArgumentException("Timed preparation needs a start and a limit");
+        if (limit != null && (limit.isNegative() || limit.isZero()))
+            throw new IllegalArgumentException("Preparation deadline must be positive");
         this.lobbyCode = lobbyCode;
         this.hostId = hostId;
         this.guestId = guestId;
         this.mode = Objects.requireNonNull(mode);
+        this.placementDeadlineAt = limit == null ? null : startedAt.plus(limit);
     }
 
     public GameModeDefinition mode() { return mode; }
     public boolean bothConfirmed() { return confirmed.size() == 2; }
+    public Instant placementDeadlineAt() { return placementDeadlineAt; }
+
+    /** Expiration is idempotent and called under the same lobby mutex as placement.
+     * The REST contract submits full fleets atomically, so the only unplaced
+     * ships are the whole missing fleet. Already placed boards are preserved.
+     */
+    public boolean completeExpired(Instant now) {
+        if(placementDeadlineAt == null || now.isBefore(placementDeadlineAt) || bothConfirmed())
+            return false;
+        for (long player : new long[]{hostId,guestId}) {
+            if (!fleets.containsKey(player)) fleets.put(player,Board.random(mode));
+            confirmed.add(player);
+        }
+        revision++;
+        return true;
+    }
     public Board confirmedBoard(long player) {
         requireParticipant(player);
         if (!confirmed.contains(player))
@@ -53,7 +82,7 @@ public final class PreparationRound {
         return new PreparationResponse(lobbyCode, id, mode.geometry().rows(), revision,
             own != null, confirmed.contains(player), fleets.containsKey(rival),
             confirmed.contains(rival), confirmed.size() == 2,
-            own == null ? List.of() : own.ships(), mode.summary());
+            own == null ? List.of() : own.ships(), mode.summary(),placementDeadlineAt);
     }
 
     private void requireParticipant(long player) {

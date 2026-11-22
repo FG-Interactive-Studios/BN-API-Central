@@ -68,18 +68,19 @@ public final class SquareAbilityRule implements AbilityRule {
             (ctx,t)->AbilityOutcome.of(new AbilityEffect.LastChance()));
 
         add(actions, new AbilitySpec("radar","Radar",1,1,"ENEMY",
-            "Conta casas ocupadas no setor 3x3, sem revelar posições."),
+            "Conta casas inimigas ainda não atingidas no setor 3x3, sem revelar posições."),
             (ctx,t)-> {
                 Cell c=t.get(0);
                 int hits=(int)ctx.enemyBoard().occupied().stream()
                     .filter(cell->Math.abs(c.row()-cell.row())<=1
-                        && Math.abs(c.col()-cell.col())<=1).count();
+                        && Math.abs(c.col()-cell.col())<=1
+                        && !ctx.ownShots().contains(cell)).count();
                 return AbilityOutcome.of(new AbilityEffect.Scan(
                     new RadarReport(c.row(),c.col(),hits)));
             });
 
         add(actions, new AbilitySpec("interference","Interferência",1,0,"NONE",
-            "Bloqueia o uso de habilidades inimigas na próxima ação do adversário."),
+            "Bloqueia o uso de habilidades inimigas durante duas ações do adversário."),
             (ctx,t)->AbilityOutcome.of(new AbilityEffect.Jam()));
 
         add(actions, new AbilitySpec("retreat","Retirada",1,2,"OWN",

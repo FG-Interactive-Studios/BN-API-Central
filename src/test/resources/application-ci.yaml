@@ -9,3 +9,8 @@ auth:
     secret-base64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
   admin-bootstrap:
     enabled: false
+
+# Historical API contract tests deliberately exercise the un-timed engine;
+# focused game-clock unit tests cover the new GDD state machine.
+match:
+  gdd-enforced: false

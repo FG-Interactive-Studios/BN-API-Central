@@ -103,10 +103,22 @@ class SquareEightAbilitiesTests {
         assertEquals(1,b.view(11).yourAbilities().get(5).usesRemaining());
         b.fire(11,c(7,7));
         b.fire(10,c(7,6));
+        assertTrue(b.view(11).yourAbilities().stream().allMatch(a->a.locked()));
+        b.fire(11,c(7,5));
+        b.fire(10,c(7,4));
         assertTrue(b.view(11).yourAbilities().stream().noneMatch(a->a.locked()));
         b.useAbility(11,"radar",List.of(c(0,0)));
         assertEquals(2,b.view(11).yourRadarReports().get(0).contacts());
         assertTrue(b.view(10).yourRadarReports().isEmpty());
+    }
+
+    @Test void radarOnlyCountsEnemyCellsNotPreviouslyHit() {
+        var b=battle(8);
+        b.fire(10,c(1,1)); // first enemy ship cell is hit
+        b.fire(11,c(7,7));
+        b.useAbility(10,"radar",List.of(c(1,1)));
+        assertEquals(1,b.view(10).yourRadarReports().get(0).contacts());
+        assertTrue(b.view(11).yourRadarReports().isEmpty());
     }
 
     @Test void retreatMovesOnlyOwnUndamagedShipAndNeverLeaksNewLocation() {
