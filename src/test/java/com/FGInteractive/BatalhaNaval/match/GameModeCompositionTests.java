@@ -18,8 +18,8 @@ class GameModeCompositionTests {
         assertEquals(64, quick.geometry().cells().size());
         assertEquals(55, triangle.geometry().cells().size());
         assertEquals(8, Board.random(classic).occupied().size());
-        assertEquals(9, Board.random(quick).occupied().size());
-        assertEquals(9, Board.random(triangle).occupied().size());
+        assertEquals(8, Board.random(quick).occupied().size());
+        assertEquals(8, Board.random(triangle).occupied().size());
         assertEquals("linear", triangle.placement().id());
         assertEquals("disabled", triangle.rules().get(RuleSlot.ABILITY).id());
         assertEquals(3, quick.summary().fleet().size());
@@ -49,25 +49,27 @@ class GameModeCompositionTests {
     @Test void differentFleetsCannotBeInterchangedOrSpoofed() {
         var quick = GameModePresets.quick();
         var valid = List.of(
-            new ShipPlacement("BATTLESHIP", 0, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("CRUISER", 1, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("DESTROYER", 2, 0, Orientation.HORIZONTAL));
-        assertEquals(9, Board.from(quick, valid).occupied().size());
-        assertThrows(IllegalArgumentException.class, () -> Board.from(GameModePresets.classic(), valid));
+            new ShipPlacement("CARRIER", 0, 0, Orientation.HORIZONTAL),
+            new ShipPlacement("DESTROYER", 1, 0, Orientation.HORIZONTAL),
+            new ShipPlacement("SEARCH", 2, 0, Orientation.HORIZONTAL));
+        assertEquals(8, Board.from(quick, valid).occupied().size());
+        assertEquals(8, Board.from(GameModePresets.classic(), valid).occupied().size());
         var forged = new ArrayList<>(valid);
-        forged.set(2, new ShipPlacement("CARRIER", 2, 0, Orientation.HORIZONTAL));
+        forged.set(2, new ShipPlacement("BATTLESHIP", 2, 0, Orientation.HORIZONTAL));
         assertThrows(IllegalArgumentException.class, () -> Board.from(quick, forged));
+        assertThrows(IllegalArgumentException.class,
+            () -> Board.from(GameModePresets.classic(), forged));
         var badEdge = new ArrayList<>(valid);
-        badEdge.set(0, new ShipPlacement("BATTLESHIP", 0, 5, Orientation.HORIZONTAL));
+        badEdge.set(0, new ShipPlacement("CARRIER", 0, 4, Orientation.HORIZONTAL));
         assertThrows(IllegalArgumentException.class, () -> Board.from(quick, badEdge));
 
         var triangle = GameModePresets.triangular();
         assertThrows(IllegalArgumentException.class, () -> Board.from(triangle, valid));
         var playable = List.of(
-            new ShipPlacement("BATTLESHIP", 9, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("CRUISER", 8, 0, Orientation.HORIZONTAL),
-            new ShipPlacement("DESTROYER", 7, 0, Orientation.HORIZONTAL));
-        assertEquals(9, Board.from(triangle, playable).occupied().size());
+            new ShipPlacement("CARRIER", 9, 0, Orientation.HORIZONTAL),
+            new ShipPlacement("DESTROYER", 8, 0, Orientation.HORIZONTAL),
+            new ShipPlacement("SEARCH", 7, 0, Orientation.HORIZONTAL));
+        assertEquals(8, Board.from(triangle, playable).occupied().size());
     }
 
     @Test void registryRejectsUnknownModeAndMalformedModuleCompositions() {

@@ -72,8 +72,8 @@ class PolygonalBoardGeometryTests {
         assertEquals(List.of(Orientation.HEX_VERTICAL,Orientation.HEX_DIAGONAL_UP,
             Orientation.HEX_DIAGONAL_DOWN),mode.placement().directions());
         var fleet=List.of(
-            new ShipPlacement("BATTLESHIP",4,4,Orientation.HEX_VERTICAL),
-            new ShipPlacement("CRUISER",4,0,Orientation.HEX_DIAGONAL_DOWN),
+            new ShipPlacement("CARRIER",4,4,Orientation.HEX_VERTICAL),
+            new ShipPlacement("SEARCH",4,0,Orientation.HEX_DIAGONAL_DOWN),
             new ShipPlacement("DESTROYER",6,1,Orientation.HEX_DIAGONAL_UP));
         assertEquals(9,Board.from(mode,fleet).occupied().size());
         assertThrows(IllegalArgumentException.class,()->Board.from(mode,

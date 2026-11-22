@@ -80,9 +80,9 @@ class TriangularTileGeometryTests {
             new LinearPlacementRule(),mode.rules()));
 
         var fleet=List.of(
-            new ShipPlacement("BATTLESHIP",5,0,Orientation.TRI_RIGHT),
-            new ShipPlacement("CRUISER",1,0,Orientation.TRI_DOWN_RIGHT),
-            new ShipPlacement("DESTROYER",3,0,Orientation.TRI_DOWN_LEFT));
+            new ShipPlacement("CARRIER",5,0,Orientation.TRI_RIGHT),
+            new ShipPlacement("DESTROYER",1,0,Orientation.TRI_DOWN_RIGHT),
+            new ShipPlacement("SEARCH",3,0,Orientation.TRI_DOWN_LEFT));
         var board=Board.from(mode,fleet);
         assertEquals(9,board.occupied().size());
         for(ShipPlacement ship:fleet) {
@@ -93,12 +93,12 @@ class TriangularTileGeometryTests {
         }
 
         var invalid=new ArrayList<>(fleet);
-        invalid.set(0,new ShipPlacement("BATTLESHIP",0,0,Orientation.TRI_RIGHT));
+        invalid.set(0,new ShipPlacement("CARRIER",0,0,Orientation.TRI_RIGHT));
         assertThrows(IllegalArgumentException.class,()->Board.from(mode,invalid));
-        invalid.set(0,new ShipPlacement("BATTLESHIP",5,0,Orientation.HORIZONTAL));
+        invalid.set(0,new ShipPlacement("CARRIER",5,0,Orientation.HORIZONTAL));
         assertThrows(IllegalArgumentException.class,()->Board.from(mode,invalid));
-        invalid.set(0,new ShipPlacement("BATTLESHIP",5,0,Orientation.TRI_RIGHT));
-        invalid.set(1,new ShipPlacement("CRUISER",5,0,Orientation.TRI_RIGHT));
+        invalid.set(0,new ShipPlacement("CARRIER",5,0,Orientation.TRI_RIGHT));
+        invalid.set(1,new ShipPlacement("SEARCH",5,0,Orientation.TRI_RIGHT));
         assertThrows(IllegalArgumentException.class,()->Board.from(mode,invalid));
     }
 
