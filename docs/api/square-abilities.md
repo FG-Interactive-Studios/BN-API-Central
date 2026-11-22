@@ -75,3 +75,8 @@ pode ser atacada de novo. O frontend deve ignorá-lo nas marcas permanentes.
 - Validar em QA a movimentação, os poderes defensivos e o combate em
   smartphones e desktops, incluindo reconexão e eventos WebSocket.
 - O catálogo inicial inclui `classic-powers`; a administração pode desabilitá-lo enquanto o GDD e a homologação final estão pendentes.
+
+
+## Pontos de habilidade do GDD v1.2
+
+Nos modos base com poderes, o servidor posiciona quatro marcadores apenas em casas vazias do próprio tabuleiro. `yourAbilityPointCells` é privado; acertar um marcador inimigo concede uma unidade em `yourAbilityPointsEarned`. Radar e Tiro Duplo são gratuitos; outras habilidades exigem 1 ponto e são `locked` sem saldo. O saldo é **apenas da partida**, sem vínculo com a moeda da loja. Contrato de relógios e pontos: [GDD v1.2](gdd-timers-and-ability-points.md).

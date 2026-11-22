@@ -30,6 +30,10 @@ Use também `mode.geometry.tiles` para renderizar o formato real das
 células e `mode.placementDirections` para as orientações admitidas.
 Consulte [geometrias de tabuleiro](../architecture/board-topologies.md).
 
+## Prazo do posicionamento
+
+Nos modos iniciais, a API informa `placementDeadlineAt` (UTC) e a preparação dura 30 segundos. O servidor completa automaticamente frotas ausentes e confirma as duas ao expirar o prazo. Detalhes: [GDD v1.2 — regras](gdd-timers-and-ability-points.md).
+
 ## Frota e coordenadas
 
 No **modo clássico**, tabuleiro 8×8. Índices de linha e coluna de **0 a 7**.

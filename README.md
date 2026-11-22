@@ -437,3 +437,8 @@ git checkout -b feature/user-profile
 - Se o Docker Desktop não estiver aberto, a aplicação local não tentará iniciar sem aviso explícito.
 
 **Alinhamento GD v1.2:** os dois modos base são `classic` e `classic-powers`, 8×8 com três embarcações: SEARCH (1), DESTROYER (2) e CARRIER (5). Nenhuma das demais classes legadas está habilitada nos modos registrados; os modos experimentais permanecem desativados por padrão. Não existe regra aprovada sobre repetição de classes na composição de três navios; a versão atual usa um de cada, até definição de GD #9. O limite de partida (10 min), turno (20 s), preparação (30 s), reconexão (15 s) e os pontos de habilidade previstos no GDD não são implementados por esta mudança e requerem trabalho próprio no motor.
+
+
+## Relógios e pontos de habilidade (GDD v1.2)
+
+Nos modos base, a API tem preparação de 30 s, turno de 20 s, duração de 10 min, reconexão de 15 s e sorteio de quatro pontos de habilidade por tabuleiro no modo com poderes. O servidor publica deadlines e resultados em snapshots privados e executa watchdog com mutex compartilhado. [Contrato completo](docs/api/gdd-timers-and-ability-points.md). Recompensas e balanceamento definitivo continuam pendentes.
