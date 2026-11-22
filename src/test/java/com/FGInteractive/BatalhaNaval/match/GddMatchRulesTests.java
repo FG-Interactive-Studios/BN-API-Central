@@ -22,7 +22,7 @@ class GddMatchRulesTests {
     private static BattleRound timed(boolean powers) {
         GameModeDefinition mode=powers?GameModePresets.classicPowers():GameModePresets.classic();
         return new BattleRound("ABC234",mode,10,11,board(mode,0),board(mode,4),
-            START,GddMatchRules.TURN,GddMatchRules.MATCH);
+            START,GddMatchRules.TURN,GddMatchRules.MATCH,10L);
     }
     @Test void baseModesHaveExplicitGddDeadlinesAndThreeShips() {
         assertEquals(Duration.ofSeconds(30),GddMatchRules.PREPARATION);
@@ -36,6 +36,17 @@ class GddMatchRulesTests {
             assertEquals(3,game.view(10).yourShips().size());
             assertEquals(0,game.view(10).yourConsecutiveMissedTurns());
         }
+    }
+
+    @Test void serverCanChooseEitherOpeningPlayerButNeverOutsider() {
+        var mode=GameModePresets.classic();
+        var guestStarts=new BattleRound("ABC234",mode,10,11,
+            board(mode,0),board(mode,4),START,GddMatchRules.TURN,
+            GddMatchRules.MATCH,11L);
+        assertEquals(11L,guestStarts.view(10).turnPlayerId());
+        assertThrows(IllegalArgumentException.class,()->new BattleRound(
+            "ABC234",mode,10,11,board(mode,0),board(mode,4),
+            START,GddMatchRules.TURN,GddMatchRules.MATCH,99L));
     }
 
     @Test void preparationExpiresOncePreservesSubmittedFleetAndAutoConfirmsMissing() {

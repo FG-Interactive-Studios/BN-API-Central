@@ -10,8 +10,8 @@ O início de `PREPARING` cria uma `PreparationRound` com `placementDeadlineAt` (
 
 O contrato atual do PUT recebe a **frota inteira**, não posições parciais; portanto os navios ainda apenas no rascunho do navegador não são conhecidos pelo servidor e não poderão ser preservados no autoposicionamento. Um futuro endpoint de rascunho validado poderá evoluir isso.
 
-## Batalha: 20 segundos por turno, 10 minutos por partida
-`turnDeadlineAt` e `matchDeadlineAt` são UTC e aparecem em `BattleResponse`. Ao expirar o turno, o jogador **perde a vez** (opção expressamente permitida no GDD) e o próximo jogador recebe um novo prazo. O servidor incrementa `yourConsecutiveMissedTurns`; uma jogada válida, incluindo habilidade, zera apenas a contagem daquele jogador. Três turnos **próprios** perdidos consecutivamente encerram com `finishReason="TURN_TIMEOUT_FORFEIT"` e vitória do oponente.
+## Batalha: sorteio inicial, 20 segundos por turno e 10 minutos por partida
+Ao iniciar, o servidor sorteia o primeiro jogador. `turnDeadlineAt` e `matchDeadlineAt` são UTC e aparecem em `BattleResponse`. Ao expirar o turno, o jogador **perde a vez** (opção expressamente permitida no GDD) e o próximo jogador recebe um novo prazo. O servidor incrementa `yourConsecutiveMissedTurns`; uma jogada válida, incluindo habilidade, zera apenas a contagem daquele jogador. Três turnos **próprios** perdidos consecutivamente encerram com `finishReason="TURN_TIMEOUT_FORFEIT"` e vitória do oponente.
 
 Ao expirar o limite total de partida, os navios sobreviventes são calculados pelos acertos efetivos em cada frota. Quem tiver mais navios não destruídos vence (`TIME_LIMIT`). Em caso de igualdade, ambos empatam (`TIME_LIMIT_DRAW`, `winnerId=null`). Encerramentos são idempotentes, com revisão monotônica, e não são sobrescritos por outro watchdog. Ao afundar a frota inteira antes do limite, `ALL_SHIPS_SUNK` prevalece.
 

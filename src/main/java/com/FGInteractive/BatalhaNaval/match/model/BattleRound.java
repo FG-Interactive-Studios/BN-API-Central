@@ -49,12 +49,24 @@ public final class BattleRound {
      */
     public BattleRound(String lobbyCode, GameModeDefinition mode, long hostId, long guestId,
                        Board hostBoard, Board guestBoard) {
-        this(lobbyCode,mode,hostId,guestId,hostBoard,guestBoard,null,null,null);
+        this(lobbyCode,mode,hostId,guestId,hostBoard,guestBoard,null,null,null,hostId);
     }
 
     public BattleRound(String lobbyCode, GameModeDefinition mode, long hostId, long guestId,
                        Board hostBoard, Board guestBoard, Instant startedAt,
                        Duration turnLimit, Duration matchLimit) {
+        this(lobbyCode,mode,hostId,guestId,hostBoard,guestBoard,
+            startedAt,turnLimit,matchLimit,RANDOM.nextBoolean()?hostId:guestId);
+    }
+
+    /** Explicit opening player is useful for deterministic tests.
+     * Production delegates here with a secure server-side coin toss.
+     */
+    public BattleRound(String lobbyCode, GameModeDefinition mode, long hostId, long guestId,
+                       Board hostBoard, Board guestBoard, Instant startedAt,
+                       Duration turnLimit, Duration matchLimit, long openingPlayer) {
+        if(openingPlayer!=hostId && openingPlayer!=guestId)
+            throw new IllegalArgumentException("Opening player must be a participant");
         if (hostId == guestId) throw new IllegalArgumentException("Two unique players are required");
         if ((startedAt == null) != (turnLimit == null)
             || (startedAt == null) != (matchLimit == null))
@@ -81,7 +93,7 @@ public final class BattleRound {
         abilityUseCounts.put(guestId, new HashMap<>());
         radarReports.put(hostId, new ArrayList<>());
         radarReports.put(guestId, new ArrayList<>());
-        turnPlayerId = hostId; // Existing deterministic first player.
+        turnPlayerId = openingPlayer;
         earnedAbilityPoints.put(hostId,0);
         earnedAbilityPoints.put(guestId,0);
         consecutiveMissedTurns.put(hostId,0);
