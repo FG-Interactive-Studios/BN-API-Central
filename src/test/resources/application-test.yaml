@@ -15,3 +15,8 @@ spring:
 auth:
   jwt:
     secret-base64: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+# The simple H2 context test does not run Flyway or create catalog tables.
+store:
+  catalog:
+    bootstrap-enabled: false

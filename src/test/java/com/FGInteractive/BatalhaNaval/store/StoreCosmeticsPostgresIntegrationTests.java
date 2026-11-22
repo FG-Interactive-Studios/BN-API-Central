@@ -103,6 +103,10 @@ class StoreCosmeticsPostgresIntegrationTests {
     void disabledAndUnknownItemsCannotBePurchasedOrEquipped() throws Exception {
         Player p=player();
         assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"sound_sonar",409),"$.code"));
+        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"skin_corsair",409),"$.code"));
+        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"captain_corsair",409),"$.code"));
+        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"bundle_corsair",409),"$.code"));
+        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(equip(p,"bundle_corsair",409),"$.code"));
         assertEquals("ITEM_NOT_FOUND",JsonPath.read(purchase(p,"does-not-exist",404),"$.code"));
         assertEquals("NOT_OWNED",JsonPath.read(equip(p,"skin_abyss",409),"$.code"));
         assertEquals(300, ((Number)JsonPath.read(store(p),"$.credits")).intValue());
