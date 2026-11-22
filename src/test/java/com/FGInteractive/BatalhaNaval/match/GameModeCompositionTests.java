@@ -10,7 +10,7 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 
 class GameModeCompositionTests {
-    @Test void modesComposeDifferentFleetSizesAndGeometryWithoutChangingBoardLogic() {
+    @Test void modesShareApprovedFleetButPreserveDistinctGeometries() {
         GameModeDefinition classic = GameModePresets.classic();
         GameModeDefinition quick = GameModePresets.quick();
         GameModeDefinition triangle = GameModePresets.triangular();
@@ -30,6 +30,25 @@ class GameModeCompositionTests {
                 assertEquals(mode.fleet().occupiedCells(), board.occupied().size());
                 assertEquals(board.occupied(), Board.from(mode, board.ships()).occupied());
                 assertTrue(board.occupied().stream().allMatch(mode.geometry()::contains));
+            }
+        }
+    }
+
+    @Test void everyRegisteredPresetExposesOnlyApprovedShipClasses() {
+        var expected = List.of(new ShipDefinition("SEARCH",1),
+            new ShipDefinition("DESTROYER",2),new ShipDefinition("CARRIER",5));
+        for(var mode:List.of(GameModePresets.classic(),
+                GameModePresets.classicPowers(),GameModePresets.quick(),
+                GameModePresets.triangular(),GameModePresets.triangleTiles(),
+                GameModePresets.hexagons())) {
+            assertEquals(expected,mode.fleet().ships(),mode.id());
+            for(String disallowed:List.of("BATTLESHIP","CRUISER","SUBMARINE")) {
+                var placements=new ArrayList<>(Board.random(mode).ships());
+                var placement=placements.get(0);
+                placements.set(0,new ShipPlacement(disallowed,placement.row(),
+                    placement.col(),placement.orientation()));
+                assertThrows(IllegalArgumentException.class,
+                    ()->Board.from(mode,placements),mode.id()+":"+disallowed);
             }
         }
     }
