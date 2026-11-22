@@ -8,6 +8,7 @@ import com.FGInteractive.BatalhaNaval.match.mode.*;
 import java.util.*;
 import java.time.Duration;
 import java.time.Instant;
+import java.security.SecureRandom;
 
 /** In-memory, server-authoritative match. All access under the lobby mutex. */
 public final class BattleRound {
@@ -18,6 +19,16 @@ public final class BattleRound {
     private final long guestId;
     private final Map<Long, Board> boards;
     private final Map<Long, LinkedHashMap<Cell, ShotRecord>> shots = new HashMap<>();
+    private static final SecureRandom RANDOM = new SecureRandom();
+    private final Map<Long, Set<Cell>> abilityPointCells = new HashMap<>();
+    private final Map<Long, Integer> earnedAbilityPoints = new HashMap<>();
+    private final Map<Long, Integer> consecutiveMissedTurns = new HashMap<>();
+    private final boolean timed;
+    private final Duration turnLimit;
+    private Instant turnDeadlineAt;
+    private Instant matchDeadlineAt;
+    private Instant pausedSince;
+
     private final Map<Long, Map<String,Integer>> abilityUseCounts = new HashMap<>();
     private final Map<Long, List<RadarReport>> radarReports = new HashMap<>();
     /** Action counters, not wall time: deterministic even during disconnects. */
@@ -33,9 +44,28 @@ public final class BattleRound {
     private final Map<Long, Instant> reconnectDeadlines = new HashMap<>();
     private long revision = 1;
 
+    /** Legacy constructor for isolated module tests; server game creation
+     * uses the timed constructor for the two initial GDD game modes.
+     */
     public BattleRound(String lobbyCode, GameModeDefinition mode, long hostId, long guestId,
                        Board hostBoard, Board guestBoard) {
+        this(lobbyCode,mode,hostId,guestId,hostBoard,guestBoard,null,null,null);
+    }
+
+    public BattleRound(String lobbyCode, GameModeDefinition mode, long hostId, long guestId,
+                       Board hostBoard, Board guestBoard, Instant startedAt,
+                       Duration turnLimit, Duration matchLimit) {
         if (hostId == guestId) throw new IllegalArgumentException("Two unique players are required");
+        if ((startedAt == null) != (turnLimit == null)
+            || (startedAt == null) != (matchLimit == null))
+            throw new IllegalArgumentException("Timed game requires all clocks");
+        if (turnLimit != null && (turnLimit.isNegative() || turnLimit.isZero()
+            || matchLimit.isNegative() || matchLimit.isZero()))
+            throw new IllegalArgumentException("Timings must be positive");
+        timed = startedAt != null;
+        this.turnLimit = turnLimit;
+        turnDeadlineAt = timed ? startedAt.plus(turnLimit) : null;
+        matchDeadlineAt = timed ? startedAt.plus(matchLimit) : null;
         this.lobbyCode = Objects.requireNonNull(lobbyCode);
         this.mode = Objects.requireNonNull(mode);
         this.hostId = hostId;
@@ -51,7 +81,98 @@ public final class BattleRound {
         abilityUseCounts.put(guestId, new HashMap<>());
         radarReports.put(hostId, new ArrayList<>());
         radarReports.put(guestId, new ArrayList<>());
-        turnPlayerId = hostId; // Explicit deterministic opening rule for V1.
+        turnPlayerId = hostId; // Existing deterministic first player.
+        earnedAbilityPoints.put(hostId,0);
+        earnedAbilityPoints.put(guestId,0);
+        consecutiveMissedTurns.put(hostId,0);
+        consecutiveMissedTurns.put(guestId,0);
+        if(timed && mode.rules().get(RuleSlot.ABILITY) instanceof AbilityRule) {
+            abilityPointCells.put(hostId,allocatePoints(hostBoard));
+            abilityPointCells.put(guestId,allocatePoints(guestBoard));
+        }
+    }
+
+    private Set<Cell> allocatePoints(Board board) {
+        var candidates = new ArrayList<>(mode.geometry().cells());
+        candidates.removeAll(board.occupied());
+        if(candidates.size() < GddMatchRules.POWER_POINTS_PER_BOARD)
+            throw new IllegalArgumentException("Not enough empty cells for ability points");
+        Collections.shuffle(candidates,RANDOM);
+        return Set.copyOf(candidates.subList(0,GddMatchRules.POWER_POINTS_PER_BOARD));
+    }
+
+    /** Only owner sees their board's point coordinates. */
+    public Set<Cell> pointsOnOwnBoard(long player) {
+        requireParticipant(player);
+        return abilityPointCells.getOrDefault(player,Set.of());
+    }
+    public Instant turnDeadlineAt() { return finished()?null:turnDeadlineAt; }
+    public Instant matchDeadlineAt() { return finished()?null:matchDeadlineAt; }
+    public boolean paused() { return pausedSince != null; }
+    public int missedTurns(long player) {
+        requireParticipant(player);
+        return consecutiveMissedTurns.getOrDefault(player,0);
+    }
+
+    /** Pause wall-clock deadlines during a live disconnection, then extend
+     * both by the actual pause duration. Timers never run while paused.
+     */
+    private void updatePause(Instant now) {
+        if(!timed) return;
+        if(!reconnectDeadlines.isEmpty() && pausedSince == null) pausedSince = now;
+        else if(reconnectDeadlines.isEmpty() && pausedSince != null) {
+            Duration suspended = Duration.between(pausedSince,now);
+            if(suspended.isNegative()) throw new IllegalArgumentException("Non-monotonic clock");
+            turnDeadlineAt = turnDeadlineAt.plus(suspended);
+            matchDeadlineAt = matchDeadlineAt.plus(suspended);
+            pausedSince = null;
+        }
+    }
+
+    /** Called by watchdog and before commands under the lobby mutex.
+     * One turn is adjudicated per pass to bound a delayed sweep.
+     */
+    public boolean resolveTimed(Instant now) {
+        if (!timed || finished() || paused()) return false;
+        if (!now.isBefore(matchDeadlineAt)) {
+            int hostAlive = survivingShips(hostId);
+            int guestAlive = survivingShips(guestId);
+            finish(hostAlive == guestAlive ? null : hostAlive > guestAlive ? hostId : guestId,
+                hostAlive == guestAlive ? "TIME_LIMIT_DRAW" : "TIME_LIMIT");
+            return true;
+        }
+        if (now.isBefore(turnDeadlineAt)) return false;
+        long absent=turnPlayerId;
+        long other=absent==hostId?guestId:hostId;
+        int missed = consecutiveMissedTurns.merge(absent,1,Integer::sum);
+        if (missed >= GddMatchRules.MAX_CONSECUTIVE_TURN_TIMEOUTS) {
+            finish(other,"TURN_TIMEOUT_FORFEIT");
+        } else {
+            actionsTaken.merge(absent,1,Integer::sum);
+            turnPlayerId=other;
+            turnDeadlineAt=now.plus(turnLimit);
+            revision++;
+        }
+        return true;
+    }
+
+    private int survivingShips(long defender) {
+        long attacker=defender==hostId?guestId:hostId;
+        Set<Cell> hits=successfulShots(attacker);
+        int surviving=0;
+        for(var ship:boards.get(defender).ships()) {
+            var occupied=mode.placement().footprint(ship,
+                mode.fleet().require(ship.type()),mode.geometry());
+            if(!hits.containsAll(occupied)) surviving++;
+        }
+        return surviving;
+    }
+
+    private void requirePlayableAt(Instant now) {
+        if(!timed) return;
+        if(paused()) throw new IllegalStateException("Game is paused during reconnection");
+        if(!now.isBefore(turnDeadlineAt) || !now.isBefore(matchDeadlineAt))
+            throw new IllegalStateException("Game deadline has expired");
     }
 
     public boolean finished() { return finishReason != null; }
@@ -70,6 +191,7 @@ public final class BattleRound {
             if (reconnectDeadlines.containsKey(player)) return false;
             reconnectDeadlines.put(player, now.plus(grace));
         }
+        updatePause(now);
         revision++;
         return true;
     }
@@ -162,6 +284,10 @@ public final class BattleRound {
             .resolve(mode,defending,Set.copyOf(successful),target);
         fired.put(target,new ShotRecord(target.row(),target.col(),
             impact.hit(),impact.sunkShip()));
+        // Ability points are on empty cells, so a valid ordinary miss may
+        // grant one point. Blocked attempts never grant currency.
+        if(timed && abilityPointCells.getOrDefault(defender,Set.of()).contains(target))
+            earnedAbilityPoints.merge(attacker,1,Integer::sum);
         return impact;
     }
 
@@ -171,7 +297,7 @@ public final class BattleRound {
         return Set.copyOf(cells);
     }
 
-    private void advanceTurn(long attacker,long defender,ShotImpact impact) {
+    private void advanceTurn(long attacker,long defender,ShotImpact impact,Instant now) {
         boolean defeated=((VictoryRule)mode.rules().get(RuleSlot.VICTORY))
             .defeated(boards.get(defender),successfulShots(attacker));
         long next=defeated?attacker:
@@ -184,13 +310,19 @@ public final class BattleRound {
             reconnectDeadlines.clear();
         }
         turnPlayerId=next;
+        if(timed) turnDeadlineAt=now.plus(turnLimit);
+        consecutiveMissedTurns.put(attacker,0);
         actionsTaken.merge(attacker,1,Integer::sum);
         revision++;
     }
 
     public void fire(long attacker, Cell target) {
+        fireAt(attacker,target,Instant.now());
+    }
+    public void fireAt(long attacker,Cell target,Instant now) {
         requireParticipant(attacker);
         if(finished()) throw new IllegalStateException("Match already finished");
+        requirePlayableAt(now);
         if(turnPlayerId!=attacker) throw new IllegalStateException("Not your turn");
         if(!mode.geometry().contains(target))
             throw new IllegalArgumentException("Target is outside the playable board");
@@ -199,12 +331,16 @@ public final class BattleRound {
             throw new IllegalStateException("Cell already targeted");
         long defender=attacker==hostId?guestId:hostId;
         ShotImpact impact=resolveShot(attacker,defender,target);
-        advanceTurn(attacker,defender,impact);
+        advanceTurn(attacker,defender,impact,now);
     }
 
     public void useAbility(long attacker,String abilityId,List<Cell> targets) {
+        useAbilityAt(attacker,abilityId,targets,Instant.now());
+    }
+    public void useAbilityAt(long attacker,String abilityId,List<Cell> targets,Instant now) {
         requireParticipant(attacker);
         if(finished()) throw new IllegalStateException("Match already finished");
+        requirePlayableAt(now);
         if(turnPlayerId!=attacker) throw new IllegalStateException("Not your turn");
         if(jamUntilAction.getOrDefault(attacker,0)>actionsTaken.get(attacker))
             throw new IllegalStateException("Abilities jammed until the next turn");
@@ -215,6 +351,9 @@ public final class BattleRound {
             .orElseThrow(()->new IllegalArgumentException("Unknown ability"));
         if(abilityUseCounts.get(attacker).getOrDefault(spec.id(),0)>=spec.maxUses())
             throw new IllegalStateException("Ability usage limit reached");
+        boolean free = spec.id().equals("double-shot") || spec.id().equals("radar");
+        if(timed && !free && earnedAbilityPoints.get(attacker)<1)
+            throw new IllegalStateException("Earn ability points before using this power");
 
         long defender=attacker==hostId?guestId:hostId;
         AbilityContext context=new AbilityContext(mode,boards.get(attacker),boards.get(defender),
@@ -257,7 +396,8 @@ public final class BattleRound {
             }
         }
         abilityUseCounts.get(attacker).merge(spec.id(),1,Integer::sum);
-        advanceTurn(attacker,defender,last);
+        if(timed && !free) earnedAbilityPoints.merge(attacker,-1,Integer::sum);
+        advanceTurn(attacker,defender,last,now);
     }
 
 
@@ -268,7 +408,9 @@ public final class BattleRound {
         List<AbilityStatus> available=mode.rules().get(RuleSlot.ABILITY) instanceof AbilityRule rule
             ?rule.catalog().stream().map(spec->new AbilityStatus(spec.id(),spec.name(),
                 Math.max(0,spec.maxUses()-abilityUseCounts.get(player).getOrDefault(spec.id(),0)),
-                spec.targetCount(),spec.targetScope(),spec.description(),locked)).toList()
+                spec.targetCount(),spec.targetScope(),spec.description(),
+                locked || (timed && !List.of("double-shot","radar").contains(spec.id())
+                    && earnedAbilityPoints.get(player)<1))).toList()
             :List.of();
         List<ActiveEffectStatus> effects=new ArrayList<>();
         ShieldState shield=shields.get(player);
@@ -288,7 +430,10 @@ public final class BattleRound {
             boards.get(player).ships(),List.copyOf(shots.get(player).values()),
             List.copyOf(shots.get(rival).values()),finishReason,
             Map.copyOf(reconnectDeadlines),available,
-            List.copyOf(radarReports.get(player)),List.copyOf(effects));
+            List.copyOf(radarReports.get(player)),List.copyOf(effects),
+            turnDeadlineAt(),matchDeadlineAt(),paused(),
+            consecutiveMissedTurns.get(player),earnedAbilityPoints.get(player),
+            List.copyOf(abilityPointCells.getOrDefault(player,Set.of())));
     }
 
     private void requireParticipant(long player) {

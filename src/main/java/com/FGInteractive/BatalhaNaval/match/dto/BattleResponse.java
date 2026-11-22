@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import java.time.Instant;
 import java.util.Map;
+import com.FGInteractive.BatalhaNaval.match.model.Cell;
 
 /** Per-player perspective; includes only own ship placements and observed shots. */
 public record BattleResponse(
@@ -23,5 +24,11 @@ public record BattleResponse(
     Map<Long, Instant> reconnectDeadlines,
     List<AbilityStatus> yourAbilities,
     List<RadarReport> yourRadarReports,
-    List<ActiveEffectStatus> yourActiveEffects
+    List<ActiveEffectStatus> yourActiveEffects,
+    Instant turnDeadlineAt,
+    Instant matchDeadlineAt,
+    boolean paused,
+    int yourConsecutiveMissedTurns,
+    int yourAbilityPointsEarned,
+    List<Cell> yourAbilityPointCells
 ) {}
