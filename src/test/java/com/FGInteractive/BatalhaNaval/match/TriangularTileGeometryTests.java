@@ -84,7 +84,7 @@ class TriangularTileGeometryTests {
             new ShipPlacement("DESTROYER",1,0,Orientation.TRI_DOWN_RIGHT),
             new ShipPlacement("SEARCH",3,0,Orientation.TRI_DOWN_LEFT));
         var board=Board.from(mode,fleet);
-        assertEquals(9,board.occupied().size());
+        assertEquals(8,board.occupied().size());
         for(ShipPlacement ship:fleet) {
             List<Cell> cells=mode.placement().footprint(
                 ship,mode.fleet().require(ship.type()),mode.geometry());

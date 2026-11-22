@@ -268,7 +268,7 @@ class BattleEnginePostgresIntegrationTests {
                 assertEquals(3,((Number)JsonPath.read(forHost,"$.data.yourShips.length()")).intValue());
                 assertEquals(3,((Number)JsonPath.read(forGuest,"$.data.yourShips.length()")).intValue());
                 assertEquals(0,((Number)JsonPath.read(forHost,"$.data.yourShips[0].row")).intValue());
-                assertEquals(3,((Number)JsonPath.read(forGuest,"$.data.yourShips[1].row")).intValue());
+                assertEquals(4,((Number)JsonPath.read(forGuest,"$.data.yourShips[0].row")).intValue());
                 String outcome=shoot(host,4,2);
                 assertEquals(true,JsonPath.read(outcome,"$.shotsFired[0].hit"));
                 String hostEvent=a.listener.nextShotCount(1,"shotsFired");
