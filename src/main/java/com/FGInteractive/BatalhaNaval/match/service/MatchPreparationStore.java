@@ -3,6 +3,8 @@ package com.FGInteractive.BatalhaNaval.match.service;
 import com.FGInteractive.BatalhaNaval.match.model.PreparationRound;
 import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
+import java.time.Instant;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.stereotype.Component;
@@ -15,6 +17,10 @@ public class MatchPreparationStore {
 
     public void start(String code, long hostId, long guestId, GameModeDefinition mode) {
         rounds.put(code, new PreparationRound(code, hostId, guestId, mode));
+    }
+    public void start(String code, long hostId, long guestId, GameModeDefinition mode,
+                      Instant now, Duration limit) {
+        rounds.put(code, new PreparationRound(code, hostId, guestId, mode,now,limit));
     }
     public PreparationRound get(String code) {
         PreparationRound round = rounds.get(code);
