@@ -74,9 +74,10 @@ public class StoreCatalogBootstrapService {
     List<CatalogItem> load() {
         JsonNode root;
         try {
-            String json = new String(new ClassPathResource("store/catalog-v1.json")
-                .getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            root=mapper.readTree(json);
+            try (var input = new ClassPathResource("store/catalog-v1.json").getInputStream()) {
+                String json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+                root=mapper.readTree(json);
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Cannot read versioned store catalog",e);
         }
