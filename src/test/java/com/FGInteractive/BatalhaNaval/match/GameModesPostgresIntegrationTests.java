@@ -142,16 +142,16 @@ class GameModesPostgresIntegrationTests {
         }
     }
 
-    @Test void quickModeHasDistinctFleetAndPrivateOpponentViews() throws Exception {
+    @Test void quickModeKeepsLegacyGeometryButUsesApprovedClassesAndPrivateViews() throws Exception {
         Player a=player(),b=player();
         try {
             String code=prepare(a,b,"quick");
             assertEquals(8,((Number)JsonPath.read(state(a),"$.boardSize")).intValue());
             String payload="""
                 {"ships":[
-                  {"type":"BATTLESHIP","row":0,"col":0,"orientation":"HORIZONTAL"},
-                  {"type":"CRUISER","row":1,"col":0,"orientation":"HORIZONTAL"},
-                  {"type":"DESTROYER","row":2,"col":0,"orientation":"HORIZONTAL"}
+                  {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
+                  {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+                  {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
                 ]}
                 """;
             String placed=mvc.perform(put("/api/matches/me/placement")
@@ -168,7 +168,7 @@ class GameModesPostgresIntegrationTests {
             // A classic-only type cannot be smuggled into the quick fleet.
             mvc.perform(put("/api/matches/me/placement")
                 .header("Authorization","Bearer "+b.jwt).contentType(MediaType.APPLICATION_JSON)
-                .content(payload.replace("BATTLESHIP","CARRIER"))).andExpect(status().isBadRequest());
+                .content(payload.replace("SEARCH","BATTLESHIP"))).andExpect(status().isBadRequest());
             mvc.perform(post("/api/matches/me/placement/random")
                 .header("Authorization","Bearer "+b.jwt)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.yourShips.length()").value(3));
@@ -195,9 +195,9 @@ class GameModesPostgresIntegrationTests {
                 .header("Authorization","Bearer "+b.jwt).contentType(MediaType.APPLICATION_JSON)
                 .content("""
                     {"ships":[
-                      {"type":"BATTLESHIP","row":0,"col":0,"orientation":"HORIZONTAL"},
-                      {"type":"CRUISER","row":1,"col":0,"orientation":"HORIZONTAL"},
-                      {"type":"DESTROYER","row":2,"col":0,"orientation":"HORIZONTAL"}
+                      {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
+                      {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+                      {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
                     ]}
                     """)).andExpect(status().isBadRequest());
             mvc.perform(post("/api/matches/me/placement/random")
@@ -221,9 +221,9 @@ class GameModesPostgresIntegrationTests {
                 "$.mode.placementDirections[0]"));
             String fleet="""
                 {"ships":[
-                  {"type":"BATTLESHIP","row":5,"col":0,"orientation":"TRI_RIGHT"},
-                  {"type":"CRUISER","row":1,"col":0,"orientation":"TRI_DOWN_RIGHT"},
-                  {"type":"DESTROYER","row":3,"col":0,"orientation":"TRI_DOWN_LEFT"}
+                  {"type":"CARRIER","row":5,"col":0,"orientation":"TRI_RIGHT"},
+                  {"type":"DESTROYER","row":1,"col":0,"orientation":"TRI_DOWN_RIGHT"},
+                  {"type":"SEARCH","row":3,"col":0,"orientation":"TRI_DOWN_LEFT"}
                 ]}
                 """;
             mvc.perform(put("/api/matches/me/placement")
@@ -294,9 +294,9 @@ class GameModesPostgresIntegrationTests {
                     .contentType(MediaType.APPLICATION_JSON)
                     .content("""
                         {"ships":[
-                          {"type":"BATTLESHIP","row":4,"col":4,"orientation":"%s"},
-                          {"type":"CRUISER","row":4,"col":0,"orientation":"%s"},
-                          {"type":"DESTROYER","row":6,"col":1,"orientation":"%s"}
+                          {"type":"CARRIER","row":4,"col":4,"orientation":"%s"},
+                          {"type":"DESTROYER","row":4,"col":0,"orientation":"%s"},
+                          {"type":"SEARCH","row":6,"col":1,"orientation":"%s"}
                         ]}
                         """.formatted(invalid,invalid,invalid)))
                     .andExpect(status().isBadRequest());

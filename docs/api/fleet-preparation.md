@@ -17,8 +17,8 @@ confirmação, jamais os navios ou suas coordenadas.
 
 O modo é fixado no momento em que o anfitrião cria a sala:
 `POST /api/matchmaking/lobbies` com corpo opcional
-`{"modeId":"classic"}`, `{"modeId":"quick"}` ou
-`{"modeId":"triangular"}` ou `{"modeId":"triangle-tiles"}`.
+`{"modeId":"classic"}` ou `{"modeId":"classic-powers"}`. Os outros modos
+continuam registrados no painel administrativo, mas desativados por padrão.
 O padrão é `classic`.
 `GET /api/game-modes` lista as definições públicas disponíveis.
 Veja [arquitetura e catálogo](../architecture/composable-game-modes.md).
@@ -41,9 +41,8 @@ Orientações válidas: `HORIZONTAL`, `VERTICAL`.
 | `SEARCH` | 1 |
 | `DESTROYER` | 2 |
 | `CARRIER` | 5 |
-| `DESTROYER` | 2 |
 
-**No clássico**, é obrigatório posicionar uma embarcação de cada tipo (17 células).
+**Nos modos iniciais**, a API exige provisoriamente uma embarcação de cada classe (8 células no total), enquanto o GD conclui a composição válida em #9.
 Nos demais modos, a frota válida é definida por `mode.fleet`.
 Não pode ultrapassar os limites do tabuleiro nem sobrepor outro navio.
 **Adjacência é permitida.**

@@ -19,7 +19,8 @@ public class GameModePresets {
     }
     /** Official base fleet from Game Design GDD v1.2: one ship for each
      * currently delivered class. Class multiplicity is awaiting GD definition;
-     * legacy classes are not registered in any playable fleet until their\n     * baseline visuals are approved; experimental modes remain disabled by default.
+     * legacy classes are not registered in any playable fleet until their
+     * baseline visuals are approved; experimental modes remain disabled by default.
      */
     private static FleetDefinition baseFleet() {
         return new FleetDefinition(List.of(
