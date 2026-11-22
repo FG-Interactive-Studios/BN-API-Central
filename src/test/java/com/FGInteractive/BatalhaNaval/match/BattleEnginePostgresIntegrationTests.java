@@ -73,10 +73,8 @@ class BattleEnginePostgresIntegrationTests {
         return """
             {"ships":[
               {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"BATTLESHIP","row":1,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"CRUISER","row":2,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"SUBMARINE","row":3,"col":0,"orientation":"HORIZONTAL"},
-              {"type":"DESTROYER","row":4,"col":0,"orientation":"HORIZONTAL"}
+              {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+              {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
             ]}
             """;
     }
@@ -84,11 +82,9 @@ class BattleEnginePostgresIntegrationTests {
     private String fleetOffset() {
         return """
             {"ships":[
-              {"type":"CARRIER","row":5,"col":5,"orientation":"HORIZONTAL"},
-              {"type":"BATTLESHIP","row":6,"col":5,"orientation":"HORIZONTAL"},
-              {"type":"CRUISER","row":7,"col":5,"orientation":"HORIZONTAL"},
-              {"type":"SUBMARINE","row":8,"col":5,"orientation":"HORIZONTAL"},
-              {"type":"DESTROYER","row":9,"col":5,"orientation":"HORIZONTAL"}
+              {"type":"CARRIER","row":4,"col":2,"orientation":"HORIZONTAL"},
+              {"type":"DESTROYER","row":5,"col":2,"orientation":"HORIZONTAL"},
+              {"type":"SEARCH","row":6,"col":2,"orientation":"HORIZONTAL"}
             ]}
             """;
     }
@@ -162,7 +158,7 @@ class BattleEnginePostgresIntegrationTests {
                 .header("Authorization","Bearer "+guest.jwt).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"row\":0,\"col\":0}")).andExpect(status().isConflict());
             for(String bad:List.of("{}", "{\"row\":null,\"col\":0}",
-                    "{\"row\":10,\"col\":0}", "{\"row\":-1,\"col\":0}")) {
+                    "{\"row\":8,\"col\":0}", "{\"row\":-1,\"col\":0}")) {
                 mvc.perform(post("/api/matches/me/shots")
                     .header("Authorization","Bearer "+host.jwt)
                     .contentType(MediaType.APPLICATION_JSON).content(bad))
@@ -170,16 +166,16 @@ class BattleEnginePostgresIntegrationTests {
             }
             assertEquals(((Number)JsonPath.read(first,"$.revision")).longValue(),
                 ((Number)JsonPath.read(view(host),"$.revision")).longValue());
-            String fired=shoot(host,9,9);
+            String fired=shoot(host,7,7);
             assertEquals(false,JsonPath.read(fired,"$.shotsFired[0].hit"));
             assertEquals(guest.id,((Number)JsonPath.read(fired,"$.turnPlayerId")).longValue());
             mvc.perform(post("/api/matches/me/shots")
                 .header("Authorization","Bearer "+host.jwt).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"row\":9,\"col\":9}")).andExpect(status().isConflict());
-            shoot(guest,9,9);
+                .content("{\"row\":7,\"col\":7}")).andExpect(status().isConflict());
+            shoot(guest,7,7);
             mvc.perform(post("/api/matches/me/shots")
                 .header("Authorization","Bearer "+host.jwt).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"row\":9,\"col\":9}")).andExpect(status().isConflict());
+                .content("{\"row\":7,\"col\":7}")).andExpect(status().isConflict());
             shoot(host,0,0);
             String opponent=view(guest);
             assertEquals(true,JsonPath.read(opponent,"$.shotsReceived[1].hit"));
@@ -192,11 +188,8 @@ class BattleEnginePostgresIntegrationTests {
         Player host=player(),guest=player();
         try {
             setup(host,guest);confirm(host);confirm(guest);
-            int[][] occupied={{0,0},{0,1},{0,2},{0,3},{0,4},
-                {1,0},{1,1},{1,2},{1,3},
-                {2,0},{2,1},{2,2},{3,0},{3,1},{3,2},{4,0},{4,1}};
-            int[][] misses={{9,9},{9,8},{9,7},{9,6},{9,5},{9,4},{9,3},{9,2},
-                {9,1},{9,0},{8,9},{8,8},{8,7},{8,6},{8,5},{8,4}};
+            int[][] occupied={{0,0},{0,1},{0,2},{0,3},{0,4},{1,0},{1,1},{2,0}};
+            int[][] misses={{7,7},{7,6},{7,5},{7,4},{7,3},{7,2},{7,1}};
             String last="";
             for(int i=0;i<occupied.length;i++) {
                 last=shoot(host,occupied[i][0],occupied[i][1]);
@@ -210,10 +203,8 @@ class BattleEnginePostgresIntegrationTests {
             assertEquals(host.id,((Number)JsonPath.read(last,"$.winnerId")).longValue());
             assertNull((Object)JsonPath.read(last,"$.turnPlayerId"));
             assertEquals("CARRIER",JsonPath.read(last,"$.shotsFired[4].sunkShip"));
-            assertEquals("BATTLESHIP",JsonPath.read(last,"$.shotsFired[8].sunkShip"));
-            assertEquals("CRUISER",JsonPath.read(last,"$.shotsFired[11].sunkShip"));
-            assertEquals("SUBMARINE",JsonPath.read(last,"$.shotsFired[14].sunkShip"));
-            assertEquals("DESTROYER",JsonPath.read(last,"$.shotsFired[16].sunkShip"));
+            assertEquals("DESTROYER",JsonPath.read(last,"$.shotsFired[6].sunkShip"));
+            assertEquals("SEARCH",JsonPath.read(last,"$.shotsFired[7].sunkShip"));
             String losingView=view(guest);
             assertEquals("FINISHED",JsonPath.read(losingView,"$.status"));
             assertEquals(host.id,((Number)JsonPath.read(losingView,"$.winnerId")).longValue());
@@ -238,7 +229,7 @@ class BattleEnginePostgresIntegrationTests {
                     return mvc.perform(post("/api/matches/me/shots")
                         .header("Authorization","Bearer "+host.jwt)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"row\":8,\"col\":8}"))
+                        .content("{\"row\":7,\"col\":6}"))
                         .andReturn().getResponse().getStatus();
                 };
                 java.util.concurrent.Callable<Integer> b=()->{
@@ -246,7 +237,7 @@ class BattleEnginePostgresIntegrationTests {
                     return mvc.perform(post("/api/matches/me/shots")
                         .header("Authorization","Bearer "+host.jwt)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"row\":8,\"col\":9}"))
+                        .content("{\"row\":7,\"col\":7}"))
                         .andReturn().getResponse().getStatus();
                 };
                 var one=pool.submit(a);var two=pool.submit(b);gate.countDown();
@@ -274,11 +265,11 @@ class BattleEnginePostgresIntegrationTests {
                 String forGuest=b.listener.nextType("BATTLE_UPDATED");
                 assertEquals(host.id,((Number)JsonPath.read(forHost,"$.data.turnPlayerId")).longValue());
                 assertEquals(host.id,((Number)JsonPath.read(forGuest,"$.data.turnPlayerId")).longValue());
-                assertEquals(5,((Number)JsonPath.read(forHost,"$.data.yourShips.length()")).intValue());
-                assertEquals(5,((Number)JsonPath.read(forGuest,"$.data.yourShips.length()")).intValue());
-                assertEquals(0,((Number)JsonPath.read(forHost,"$.data.yourShips[1].row")).intValue());
-                assertEquals(5,((Number)JsonPath.read(forGuest,"$.data.yourShips[1].row")).intValue());
-                String outcome=shoot(host,5,5);
+                assertEquals(3,((Number)JsonPath.read(forHost,"$.data.yourShips.length()")).intValue());
+                assertEquals(3,((Number)JsonPath.read(forGuest,"$.data.yourShips.length()")).intValue());
+                assertEquals(0,((Number)JsonPath.read(forHost,"$.data.yourShips[0].row")).intValue());
+                assertEquals(3,((Number)JsonPath.read(forGuest,"$.data.yourShips[1].row")).intValue());
+                String outcome=shoot(host,4,2);
                 assertEquals(true,JsonPath.read(outcome,"$.shotsFired[0].hit"));
                 String hostEvent=a.listener.nextShotCount(1,"shotsFired");
                 String guestEvent=b.listener.nextShotCount(1,"shotsReceived");
