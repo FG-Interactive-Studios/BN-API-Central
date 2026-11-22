@@ -19,19 +19,20 @@ O construtor de `GameModeDefinition` rejeita módulos declarativos nos
 slots de combate, para não aceitar modos incapazes de executar tiros.
 `MOVEMENT` permanece declarativo. `ABILITY` continua desabilitado nos modos
 originais; um módulo executável experimental (`square-pilot-v1`) oferece
-Tiro Duplo e Radar apenas em tabuleiro quadrado, isolado no modo
-`classic-powers` e desabilitado por padrão. Consulte
+oito poderes piloto em tabuleiro quadrado, isolado no modo
+`classic-powers`, habilitado por padrão na V8. Consulte
 [habilidades quadradas](../api/square-abilities.md).
 
 ## Modos registrados
 
 | ID | Geometria | Frota | Mecânicas atuais |
 | --- | --- | --- | --- |
-| `classic` | Retangular 10×10 | 5, 4, 3, 3, 2 | Posicionamento linear |
-| `quick` | Retangular 8×8 | 4, 3, 2 | Posicionamento linear |
-| `triangular` | Máscara triangular de 10 linhas (55 quadrados) | 4, 3, 2 | Posicionamento linear |
-| `triangle-tiles` | Tesselação triangular de 8 linhas (64 triângulos) | 4, 3, 2 | Caminhos por arestas em três eixos |
-| `hexagons` | Campo hexagonal de raio 4, 61 células | 4, 3, 2 | Vertical e duas diagonais |
+| `classic` | Retangular 8×8 | 1, 2, 5 | Posicionamento linear |
+| `classic-powers` | Retangular 8×8 | 1, 2, 5 | Piloto de oito poderes |
+| `quick` | Retangular 8×8 | 1, 2, 5 | Posicionamento linear |
+| `triangular` | Máscara triangular de 10 linhas (55 quadrados) | 1, 2, 5 | Posicionamento linear |
+| `triangle-tiles` | Tesselação triangular de 8 linhas (64 triângulos) | 1, 2, 5 | Caminhos por arestas em três eixos |
+| `hexagons` | Campo hexagonal de raio 4, 61 células | 1, 2, 5 | Vertical e duas diagonais |
 
 O modo `triangular` continua com **células quadradas formando uma máscara**.
 O modo `triangle-tiles` contém **triângulos reais**, vizinhança por
@@ -39,7 +40,7 @@ aresta e caminhos de posicionamento próprios. As implementações coexistem
 para manter compatibilidade.
 Detalhes: [topologias e contrato de renderização](board-topologies.md).
 
-Os cinco modos originais compartilham as mesmas políticas de combate executáveis
+Os modos sem poderes compartilham as mesmas políticas de combate executáveis
 (e ainda declaram a ausência de movimento e poderes):
 `MOVEMENT=stationary`, `ATTACK=standard-shot`,
 `TURN=alternating`, `VICTORY=all-ships-sunk`,
@@ -82,15 +83,15 @@ dependente do modo:
 ```json
 {
   "ships": [
-    {"type":"BATTLESHIP","row":0,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"CRUISER","row":1,"col":0,"orientation":"HORIZONTAL"},
-    {"type":"DESTROYER","row":2,"col":0,"orientation":"HORIZONTAL"}
+    {"type":"CARRIER","row":0,"col":0,"orientation":"HORIZONTAL"},
+    {"type":"DESTROYER","row":1,"col":0,"orientation":"HORIZONTAL"},
+    {"type":"SEARCH","row":2,"col":0,"orientation":"HORIZONTAL"}
   ]
 }
 ```
 
-O exemplo é válido para `quick`; não para `classic` (faltam dois navios)
-nem para certas posições do modo triangular. O servidor valida contra
+O exemplo é válido para os dois modos base. Nos modos experimentais,
+a geometria pode tornar determinadas posições inválidas. O servidor valida contra
 geometria, frota, posicionamento e ocupação do modo **da sala**.
 
 As posições permanecem **privadas por jogador** nas respostas REST e
@@ -127,8 +128,8 @@ entre habilidades, turnos e geometrias.
 
 A execução de ataque, alternância de turnos e condição de vitória já
 existe, com visão de partida e eventos privados por jogador:
-[Motor de batalha](../api/battle-engine.md). O piloto quadrado implementa apenas duas ações; debuffs, movimento e os
-outros seis poderes continuam fora do escopo até validação do GDD. Serão acrescentados
+[Motor de batalha](../api/battle-engine.md). O piloto quadrado possui oito ações provisórias, ainda não homologadas
+quanto ao balanceamento e condições do GDD. Serão acrescentados
 como estratégias com semântica de ação, não como strings arbitrárias
 fornecidas pelo cliente.
 
@@ -136,8 +137,8 @@ fornecidas pelo cliente.
 
 Estado em memória, instância única, como lobby e preparação anteriores.
 Os dados de modo na sala e na rodada são snapshots imutáveis, selecionados
-no servidor; abandonar uma sala descarta a rodada e seus navios. Sem nova
-migration, framework, dependência, motor de scripts ou banco adicional.
+no servidor; abandonar uma sala descarta a rodada e seus navios. A V8 ajusta a disponibilidade inicial dos modos; sem novo
+framework, dependência, motor de scripts ou banco adicional.
 
 ## Disponibilidade administrada no banco
 

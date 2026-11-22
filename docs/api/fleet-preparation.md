@@ -85,7 +85,7 @@ Exemplo simplificado, retornado **somente ao dono da frota**:
 {
   "lobbyCode":"ABC234",
   "preparationId":"aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  "boardSize":10,
+  "boardSize":8,
   "revision":3,
   "fleetPlaced":true,
   "fleetConfirmed":false,
@@ -102,7 +102,7 @@ Exemplo simplificado, retornado **somente ao dono da frota**:
 
 `yourShips` **nunca inclui posições do oponente**. Se o próprio
 tabuleiro estiver vazio, retorna `[]`. O frontend pode desenhar as
-células ocupadas a partir das posições dos cinco navios. A API preserva
+células ocupadas a partir das posições das três embarcações. A API preserva
 o estado autoritativo para a futura etapa de tiros.
 
 O campo `bothConfirmed` muda para `true` quando ambos confirmam.

@@ -1,10 +1,14 @@
 # Geometrias de tabuleiro — células, vizinhança e renderização
 
-## Tabuleiros suportados
+## Tabuleiros registrados
+
+Apenas `classic` e `classic-powers` são habilitados por padrão; os modos
+experimentais estão desabilitados até homologação do Game Design.
 
 | Mode ID | Geometria | Células jogáveis | Posicionamento |
 | --- | --- | ---: | --- |
-| `classic` | `RECTANGULAR` 10×10 | 100 quadrados | HORIZONTAL / VERTICAL |
+| `classic` | `RECTANGULAR` 8×8 | 64 quadrados | HORIZONTAL / VERTICAL |
+| `classic-powers` | `RECTANGULAR` 8×8 | 64 quadrados | HORIZONTAL / VERTICAL |
 | `quick` | `RECTANGULAR` 8×8 | 64 quadrados | HORIZONTAL / VERTICAL |
 | `triangular` | `TRIANGULAR_MASK`, máscara de quadrados | 55 quadrados | HORIZONTAL / VERTICAL |
 | `triangle-tiles` | `TRIANGULAR_TILES`, tesselação equilátera | 64 **triângulos** | TRI_RIGHT / TRI_DOWN_LEFT / TRI_DOWN_RIGHT |
@@ -127,8 +131,8 @@ proprietário. O resultado dos disparos continua autoritativo no backend.
 
 - `POST /api/matchmaking/lobbies` sem corpo segue usando `classic`.
 - Para selecionar a nova tesselação: `{"modeId":"triangle-tiles"}`.
-- Os modos anteriores são preservados sem mudança de ID, célula ou
-  regras de vitória.
+- Os modos experimentais mantêm as geometrias e IDs, mas todas as frotas
+  registradas agora incluem somente as três classes aprovadas no GDD.
 - A vizinhança do triângulo está disponível para futuras mecânicas de
   alcance/área/movimento. **Movimento e poderes ainda não foram
   implementados.** Como decidido na [issue #12](https://github.com/FG-Interactive-Studios/BN-API-Central/issues/12),
