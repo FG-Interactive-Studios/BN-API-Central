@@ -5,6 +5,8 @@ import com.FGInteractive.BatalhaNaval.match.service.MatchPreparationStore;
 import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeDefinition;
+import com.FGInteractive.BatalhaNaval.match.mode.GddMatchRules;
+import com.FGInteractive.BatalhaNaval.match.model.PreparationRound;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeAvailabilityService;
 import java.util.function.Function;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse.LobbyPlayer;
@@ -48,10 +50,12 @@ public class MatchmakingService {
     private final MatchPreparationStore preparations;
     private final GameModeAvailabilityService modes;
     private final Duration disconnectGrace;
+    private final boolean gddEnforced;
 
     public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime,
                               MatchPreparationStore preparations, GameModeAvailabilityService modes,
-                              @Value("${match.disconnect-grace-seconds:120}") long graceSeconds) {
+                              @Value("${match.disconnect-grace-seconds:15}") long graceSeconds,
+                              @Value("${match.gdd-enforced:true}") boolean gddEnforced) {
         if (graceSeconds < 1 || graceSeconds > 3600)
             throw new IllegalArgumentException("Disconnect grace must be between 1 and 3600 seconds");
         this.users = users;
@@ -59,6 +63,7 @@ public class MatchmakingService {
         this.preparations = preparations;
         this.modes = modes;
         this.disconnectGrace = Duration.ofSeconds(graceSeconds);
+        this.gddEnforced = gddEnforced;
     }
 
     public Duration disconnectGrace() { return disconnectGrace; }
@@ -135,7 +140,10 @@ public class MatchmakingService {
             }
             if (wasWaiting && room.phase() == LobbyRoom.Phase.PREPARING) {
                 // Initialize before other threads can submit a fleet.
-                preparations.start(room.code(), room.hostId(), room.guestId(), room.mode());
+                if(gddEnforced && GddMatchRules.appliesTo(room.mode()))
+                    preparations.start(room.code(),room.hostId(),room.guestId(),
+                        room.mode(),Instant.now(),GddMatchRules.PREPARATION);
+                else preparations.start(room.code(),room.hostId(),room.guestId(),room.mode());
             }
             view = view(room);
         }
@@ -240,6 +248,87 @@ public class MatchmakingService {
         // a lobby update. Deadline changes are also visible to the opponent.
         if (hasBattle) publishBattle(room, (changed || battleStateChanged)
             ? null : event.userId());
+    }
+
+    /** Shared adjudication for preparation, reconnect, turn and match clocks.
+     * No socket I/O is performed under the lobby mutex.
+     */
+    @Scheduled(fixedDelayString = "${match.game-sweep-ms:500}")
+    public void sweepGameRules() {
+        sweepGameRulesAt(Instant.now());
+    }
+
+    public void sweepGameRulesAt(Instant now) {
+        List<LobbyRoom> started = new ArrayList<>();
+        List<LobbyRoom> battleChanges = new ArrayList<>();
+        List<LobbyRoom> finished = new ArrayList<>();
+        synchronized(mutex) {
+            for(LobbyRoom room : rooms.values()) {
+                if(room.phase()==LobbyRoom.Phase.PREPARING) {
+                    PreparationRound preparation=preparations.get(room.code());
+                    if(preparation.completeExpired(now)) {
+                        startBattleLocked(room,now);
+                        started.add(room);
+                    }
+                } else if(room.phase()==LobbyRoom.Phase.PLAYING) {
+                    BattleRound battle=preparations.battle(room.code());
+                    boolean changed=battle.resolveDisconnects(now);
+                    if(!changed)changed=battle.resolveTimed(now);
+                    if(changed) {
+                        if(battle.finished()) {
+                            room.finishBattle();
+                            finished.add(room);
+                        }
+                        battleChanges.add(room);
+                    }
+                }
+            }
+        }
+        for(LobbyRoom room : started) {
+            broadcast(room);
+            publishPreparation(room);
+            publishBattle(room,null);
+        }
+        for(LobbyRoom room : battleChanges) {
+            if(finished.contains(room))broadcast(room);
+            publishBattle(room,null);
+        }
+    }
+
+    /** Must be called under the shared lobby mutex. */
+    public BattleRound startBattleLocked(LobbyRoom room,Instant now) {
+        if(room.phase()!=LobbyRoom.Phase.PREPARING)
+            throw new IllegalStateException("Room is not preparing");
+        PreparationRound preparation=preparations.get(room.code());
+        if(!preparation.bothConfirmed())
+            throw new IllegalStateException("Both fleets must be confirmed");
+        boolean timed = gddEnforced && GddMatchRules.appliesTo(room.mode());
+        BattleRound battle=timed ?
+            new BattleRound(room.code(),room.mode(),room.hostId(),room.guestId(),
+                preparation.confirmedBoard(room.hostId()),
+                preparation.confirmedBoard(room.guestId()),now,
+                GddMatchRules.TURN,GddMatchRules.MATCH) :
+            new BattleRound(room.code(),room.mode(),room.hostId(),room.guestId(),
+                preparation.confirmedBoard(room.hostId()),
+                preparation.confirmedBoard(room.guestId()));
+        preparations.startBattle(room.code(),battle);
+        room.startBattle();
+        battle.setPlayerConnected(room.hostId(),room.hostConnected(),now,disconnectGrace);
+        battle.setPlayerConnected(room.guestId(),room.guestConnected(),now,disconnectGrace);
+        return battle;
+    }
+
+    private void publishPreparation(LobbyRoom room) {
+        com.FGInteractive.BatalhaNaval.match.dto.PreparationResponse host;
+        com.FGInteractive.BatalhaNaval.match.dto.PreparationResponse guest;
+        synchronized(mutex) {
+            if(rooms.get(room.code())!=room)return;
+            PreparationRound round=preparations.get(room.code());
+            host=round.view(room.hostId());
+            guest=round.view(room.guestId());
+        }
+        realtime.sendToPlayer(room.hostId(),"PREPARATION_UPDATED",host);
+        realtime.sendToPlayer(room.guestId(),"PREPARATION_UPDATED",guest);
     }
 
     /** Cron only adjudicates expired deadlines; event callbacks cancel them. */

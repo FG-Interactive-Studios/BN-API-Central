@@ -6,6 +6,7 @@ import com.FGInteractive.BatalhaNaval.match.model.Board;
 import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
 import com.FGInteractive.BatalhaNaval.match.model.PreparationRound;
+import java.time.Instant;
 import com.FGInteractive.BatalhaNaval.matchmaking.model.LobbyRoom;
 import com.FGInteractive.BatalhaNaval.matchmaking.service.MatchmakingService;
 import com.FGInteractive.BatalhaNaval.shared.websocket.RealtimeWebSocketHandler;
@@ -28,11 +29,13 @@ public class MatchService {
     }
 
     public PreparationResponse mine(long player) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         return matchmaking.withActiveRoom(player, room ->
             preparations.get(room.code()).view(player));
     }
 
     public PreparationResponse place(long player, PlaceFleetRequest request) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         if (request == null) throw problem(HttpStatus.BAD_REQUEST, "Fleet is required");
         return modify(player, round -> {
             Board board;
@@ -46,10 +49,12 @@ public class MatchService {
     }
 
     public PreparationResponse random(long player) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         return modify(player, round -> round.place(player, Board.random(round.mode())));
     }
 
     public PreparationResponse confirm(long player) {
+        matchmaking.sweepGameRulesAt(Instant.now());
         Confirmation transition = matchmaking.withActiveRoom(player, room -> {
             PreparationRound round = preparations.get(room.code());
             try {
@@ -61,17 +66,7 @@ public class MatchService {
             BattleResponse guestGame = null;
             boolean started = false;
             if (room.phase() == LobbyRoom.Phase.PREPARING && round.bothConfirmed()) {
-                BattleRound battle = new BattleRound(room.code(), round.mode(),
-                    room.hostId(), room.guestId(),
-                    round.confirmedBoard(room.hostId()),
-                    round.confirmedBoard(room.guestId()));
-                preparations.startBattle(room.code(), battle);
-                room.startBattle();
-                java.time.Instant now = java.time.Instant.now();
-                battle.setPlayerConnected(room.hostId(), room.hostConnected(), now,
-                    matchmaking.disconnectGrace());
-                battle.setPlayerConnected(room.guestId(), room.guestConnected(), now,
-                    matchmaking.disconnectGrace());
+                BattleRound battle = matchmaking.startBattleLocked(room,Instant.now());
                 hostGame = battle.view(room.hostId());
                 guestGame = battle.view(room.guestId());
                 started = true;
