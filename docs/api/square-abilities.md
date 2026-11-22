@@ -39,8 +39,8 @@ adicionar implicitamente poderes ao modo rápido existente.
 | `line-barrage` | Rajada em linha | 2 inimigos | Extremidades de uma linha horizontal ou vertical de três casas |
 | `hull-shield` | Escudo de casco | 1 próprio | Protege uma embarcação intacta contra o próximo acerto, durante até duas ações inimigas |
 | `last-chance` | Última chance | 0 | Bloqueia o próximo acerto fatal durante três ações inimigas |
-| `radar` | Radar | 1 inimigo | Conta células ocupadas no entorno 3×3 de forma privada |
-| `interference` | Interferência | 0 | Bloqueia poderes na próxima ação do adversário, mas não seu tiro normal |
+| `radar` | Radar | 1 inimigo | Conta células de embarcações inimigas ainda não atingidas no entorno 3×3, de forma privada |
+| `interference` | Interferência | 0 | Bloqueia poderes nas duas próximas ações do adversário, mas não seus tiros normais |
 | `retreat` | Retirada | 2 próprios | Move um navio intacto uma casa ortogonalmente sem mudar orientação |
 
 Cada habilidade pode ser ativada **uma vez por jogador por partida** e gasta

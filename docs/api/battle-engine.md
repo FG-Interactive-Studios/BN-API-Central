@@ -109,8 +109,7 @@ Após recarregar a página ou reconectar o WebSocket, chamar
 ou alterar a senha não interrompe a partida. Desconectar **não significa
 derrota**. Em `PLAYING`, sair explicitamente significa desistir; o adversário
 vence, e o resultado é preservado até que cada participante o dispense.
-A desconexão tem tolerância configurável. Não há timeout por turno nem AFK
-enquanto um WebSocket válido permanece conectado.
+A desconexão tem tolerância configurável. Nos modos base, o turno expira após 20 s, o jogador perde a vez e três faltas próprias consecutivas geram W.O. O limite total é 10 min. Veja [regras do GDD](gdd-timers-and-ability-points.md).
 
 ## Encerramento por desistência ou desconexão
 
@@ -124,6 +123,6 @@ sem vencedor.
 ## Fora desta etapa acadêmica
 
 Movimentação, habilidades além do piloto quadrado, buffs/debuffs, ações
-especiais restantes, recompensas, ranking, replay persistente, timeout por turno e infraestrutura
+especiais restantes, recompensas, ranking, replay persistente e infraestrutura
 multi-instância. Jogos/lobbies permanecem em memória de uma única instância
 e são perdidos ao reiniciá-la. Sem migration nova.
