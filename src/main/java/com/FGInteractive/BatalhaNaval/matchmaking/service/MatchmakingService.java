@@ -267,7 +267,12 @@ public class MatchmakingService {
         Long requeuedPlayer = null;
         synchronized (mutex) {
             String code = membership.get(userId);
-            if (code == null) return;
+            if (code == null) {
+                // Generic leave must also release queued players (including test cleanup
+                // and older clients that use the room endpoint to abandon matchmaking).
+                searching.remove(userId);
+                return;
+            }
             room = rooms.get(code);
             if (room == null) {
                 membership.remove(userId);
