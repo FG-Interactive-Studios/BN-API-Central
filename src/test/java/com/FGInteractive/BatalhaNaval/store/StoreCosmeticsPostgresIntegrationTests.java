@@ -70,6 +70,7 @@ class StoreCosmeticsPostgresIntegrationTests {
         Player p=player();
         String first=store(p);
         assertEquals(300, ((Number) JsonPath.read(first,"$.credits")).intValue());
+        assertEquals(0, ((Number) JsonPath.read(first,"$.premiumCredits")).intValue());
         assertEquals(true,JsonPath.read(first,"$.items[?(@.id == 'skin_default')].owned").toString().contains("true"));
         assertEquals(true,JsonPath.read(first,"$.items[?(@.id == 'sound_default')].equipped").toString().contains("true"));
         assertEquals(false,JsonPath.read(first,"$.items[?(@.id == 'sound_sonar')].enabled").toString().contains("true"));
@@ -85,6 +86,7 @@ class StoreCosmeticsPostgresIntegrationTests {
         equip(p,"skin_coral",409);
         String bought=purchase(p,"skin_coral",200);
         assertEquals(210,((Number)JsonPath.read(bought,"$.credits")).intValue());
+        assertEquals(0,((Number)JsonPath.read(bought,"$.premiumCredits")).intValue());
         String duplicate=purchase(p,"skin_coral",409);
         assertEquals("ALREADY_OWNED",JsonPath.read(duplicate,"$.code"));
         String equipped=equip(p,"skin_coral",200);
