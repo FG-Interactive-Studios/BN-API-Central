@@ -58,6 +58,59 @@ class PublicMatchmakingPostgresIntegrationTests {
             .header("Authorization","Bearer "+player.token)).andExpect(status().isNoContent());
     }
 
+    @Test void unifiedStateNeverTreatsNormalAbsenceAsNotFound() throws Exception {
+        mvc.perform(get("/api/matchmaking/state")).andExpect(status().isUnauthorized());
+        Player a=player(),b=player(),privateHost=player();
+        try {
+            // Idle is a normal 200 response and never exposes another player's room.
+            String idle=mvc.perform(get("/api/matchmaking/state")
+                .header("Authorization","Bearer "+a.token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IDLE"))
+                .andReturn().getResponse().getContentAsString();
+            assertNull(JsonPath.read(idle,"$.room"));
+            assertNull(JsonPath.read(idle,"$.modeId"));
+
+            search(a,"classic");
+            mvc.perform(get("/api/matchmaking/state")
+                .header("Authorization","Bearer "+a.token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SEARCHING"))
+                .andExpect(jsonPath("$.modeId").value("classic"));
+            String paired=search(b,"classic");
+            String pairedCode=JsonPath.read(paired,"$.room.code");
+            for(Player user:java.util.List.of(a,b)) {
+                mvc.perform(get("/api/matchmaking/state")
+                    .header("Authorization","Bearer "+user.token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("MATCHED"))
+                    .andExpect(jsonPath("$.room.code").value(pairedCode))
+                    .andExpect(jsonPath("$.room.publicMatch").value(true));
+            }
+            // Private invitations must be included, not reported as idle.
+            String privateRoom=mvc.perform(post("/api/matchmaking/lobbies")
+                .header("Authorization","Bearer "+privateHost.token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"modeId\":\"classic\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+            mvc.perform(get("/api/matchmaking/state")
+                .header("Authorization","Bearer "+privateHost.token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.room.code").value(JsonPath.read(privateRoom,"$.code")))
+                .andExpect(jsonPath("$.room.publicMatch").value(false));
+            leave(a);
+            mvc.perform(get("/api/matchmaking/state")
+                .header("Authorization","Bearer "+a.token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("IDLE"));
+            mvc.perform(get("/api/matchmaking/state")
+                .header("Authorization","Bearer "+b.token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SEARCHING"));
+            cancel(b);
+        } finally {leave(a);leave(b);leave(privateHost);cancel(a);cancel(b);}
+    }
+
     @Test void queueRequiresAuthenticationAndDoesNotRevealOtherPlayers() throws Exception {
         mvc.perform(post("/api/matchmaking/queue")).andExpect(status().isUnauthorized());
         mvc.perform(get("/api/matchmaking/queue/me")).andExpect(status().isUnauthorized());
