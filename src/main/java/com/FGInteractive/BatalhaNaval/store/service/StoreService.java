@@ -75,8 +75,10 @@ public class StoreService {
     }
 
     private StoreDTO snapshot(long playerId) {
-        Integer credits = jdbc.queryForObject(
-            "SELECT credits FROM player_wallets WHERE user_id = ?", Integer.class, playerId);
+        var wallet = jdbc.queryForMap(
+            "SELECT credits, premium_credits FROM player_wallets WHERE user_id = ?", playerId);
+        int credits = ((Number) wallet.get("credits")).intValue();
+        int premiumCredits = ((Number) wallet.get("premium_credits")).intValue();
         List<StoreDTO.Item> items = jdbc.query("""
             SELECT i.id, i.category, i.name, i.description, i.price, i.enabled,
                    (pi.item_id IS NOT NULL) AS owned,
@@ -90,7 +92,7 @@ public class StoreService {
                 rs.getString("id"), rs.getString("category"), rs.getString("name"),
                 rs.getString("description"), rs.getInt("price"), rs.getBoolean("enabled"),
                 rs.getBoolean("owned"), rs.getBoolean("equipped")), playerId, playerId);
-        return new StoreDTO(credits, items);
+        return new StoreDTO(credits, premiumCredits, items);
     }
 
     @Transactional
