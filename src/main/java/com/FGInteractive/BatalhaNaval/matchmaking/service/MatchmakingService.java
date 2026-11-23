@@ -211,6 +211,26 @@ public class MatchmakingService {
         }
     }
 
+    /**
+     * Single authoritative snapshot for the client. Unlike the legacy
+     * /lobbies/me and /queue/me lookup routes, being idle is not an error.
+     * Covers private rooms, public rooms and code-free matchmaking under
+     * the same membership mutex to avoid contradictory 404 snapshots.
+     */
+    public QueueResponse matchmakingState(long userId) {
+        synchronized (mutex) {
+            String code = membership.get(userId);
+            if (code != null) {
+                LobbyRoom room = rooms.get(code);
+                if (room != null && room.contains(userId))
+                    return new QueueResponse("MATCHED", room.mode().id(), view(room));
+            }
+            String modeId = searching.get(userId);
+            if (modeId != null) return new QueueResponse("SEARCHING", modeId, null);
+            return new QueueResponse("IDLE", null, null);
+        }
+    }
+
     public void cancelSearch(long userId) {
         synchronized (mutex) {
             if (searching.remove(userId) != null) return;
