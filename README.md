@@ -203,7 +203,13 @@ e alterar estados em `/api/admin/game-modes`, sem interromper partidas
 já existentes. A autorização administrativa é lida do banco
 (`users.is_admin`); o registro público não concede esse privilégio.
 
-**Bootstrap de administrador:** quando não há nenhum usuário administrador
+**Bootstrap de administrador (ambiente de teste):** com o perfil Spring `local`
+ativado e banco sem administradores, a API cria `admin@admin.com` com senha
+inicial `admin` **exclusivamente para uso local**. Altere a senha antes de compartilhar
+o banco e nunca use o perfil `local` em servidores públicos. Para desativar
+esse atalho: `ADMIN_BOOTSTRAP_LOCAL_DEFAULT_ENABLED=false`.
+
+**Fora do perfil `local`:** quando não há nenhum usuário administrador
 no banco, a API cria automaticamente uma conta aleatória na inicialização
 (com senha forte e hash BCrypt). O e-mail e a senha são gravados **uma
 única vez em arquivo privado** no computador que executa a API, por padrão

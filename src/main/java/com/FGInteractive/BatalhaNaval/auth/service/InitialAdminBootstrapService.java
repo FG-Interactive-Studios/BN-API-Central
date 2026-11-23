@@ -34,6 +34,26 @@ public class InitialAdminBootstrapService {
         this.encoder = encoder;
     }
 
+    /**
+     * A short fixed credential is allowed ONLY in the explicit local profile.
+     * The startup runner checks that profile; this service has no public endpoint.
+     * Existing administrators are NEVER overwritten or demoted.
+     */
+    @Transactional
+    public boolean createLocalIfMissing() {
+        if (users.existsByAdminTrue()) return false;
+        final String email = "admin@admin.com";
+        if (credentials.existsByEmail(email)) {
+            throw new IllegalStateException(
+                "Local test admin email already belongs to a non-admin account; resolve manually.");
+        }
+        Instant now = Instant.now();
+        User admin = new User("Administrador", now);
+        admin.markInitialAdministrator();
+        admin = users.saveAndFlush(admin);
+        credentials.saveAndFlush(new Auth(admin, email, encoder.encode("admin"), now));
+        return true;
+    }
     @Transactional
     public boolean createIfMissing(Path output) {
         // If at least one admin exists, leave all users and files alone.

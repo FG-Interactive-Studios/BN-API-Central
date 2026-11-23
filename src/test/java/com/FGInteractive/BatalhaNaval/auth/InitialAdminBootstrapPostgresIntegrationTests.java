@@ -62,6 +62,17 @@ class InitialAdminBootstrapPostgresIntegrationTests {
         assertEquals(before,Files.readString(output));
     }
 
+    @Test void localBootstrapCreatesFixedTestAccountOnlyWhenNoAdministratorExists() {
+        // The profile restriction belongs to InitialAdminBootstrapRunner, not this service.
+        jdbc.update("UPDATE users SET is_admin = FALSE");
+        assertTrue(bootstrap.createLocalIfMissing());
+        var saved=auth.findByEmail("admin@admin.com").orElseThrow();
+        assertTrue(saved.getUser().isAdmin());
+        assertEquals("Administrador", saved.getUser().getNickname());
+        assertNotEquals("admin", saved.getPasswordHash());
+        assertTrue(encoder.matches("admin", saved.getPasswordHash()));
+        assertFalse(bootstrap.createLocalIfMissing()); // Never reset an existing admin password.
+    }
     @Test void refusesToOverwriteOldSecretWhenDatabaseHasNoAdmin() throws Exception {
         jdbc.update("UPDATE users SET is_admin = FALSE");
         Path output=temp.resolve("existing-admin.txt");

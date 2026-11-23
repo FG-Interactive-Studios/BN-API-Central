@@ -68,7 +68,7 @@ public class UserService {
         var auth = credentials.findByUser_Id(user.getId())
             .orElseThrow(() -> new IllegalStateException("Account credentials not found"));
         return new PlayerProfile(user.getId(), user.getNickname(),
-            auth.getEmail(), user.getAvatarId(), user.getCreatedAt());
+            auth.getEmail(), user.getAvatarId(), user.getCreatedAt(), user.isAdmin());
     }
 
     private String validateNickname(String value) {
