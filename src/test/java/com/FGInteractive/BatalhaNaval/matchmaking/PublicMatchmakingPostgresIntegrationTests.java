@@ -44,7 +44,7 @@ class PublicMatchmakingPostgresIntegrationTests {
             .content("{\"modeId\":\""+modeId+"\"}"))
             .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
     }
-    private String status(Player player) throws Exception {
+    private String queueStatus(Player player) throws Exception {
         return mvc.perform(get("/api/matchmaking/queue/me")
             .header("Authorization","Bearer "+player.token)).andExpect(status().isOk())
             .andReturn().getResponse().getContentAsString();
@@ -69,7 +69,7 @@ class PublicMatchmakingPostgresIntegrationTests {
             assertEquals("classic",JsonPath.read(waiting,"$.modeId"));
             assertNull(JsonPath.read(waiting,"$.room"));
             assertEquals(waiting,search(first,"classic")); // Repeated POST is idempotent
-            assertEquals("SEARCHING",JsonPath.read(status(first),"$.status"));
+            assertEquals("SEARCHING",JsonPath.read(queueStatus(first),"$.status"));
             mvc.perform(get("/api/matchmaking/lobbies/me")
                 .header("Authorization","Bearer "+first.token)).andExpect(status().isNotFound());
             mvc.perform(post("/api/matchmaking/lobbies").header("Authorization","Bearer "+first.token))
@@ -89,7 +89,7 @@ class PublicMatchmakingPostgresIntegrationTests {
             assertEquals(a.id,((Number)JsonPath.read(joined,"$.room.players[0].id")).longValue());
             assertEquals(b.id,((Number)JsonPath.read(joined,"$.room.players[1].id")).longValue());
             String code=JsonPath.read(joined,"$.room.code");
-            assertEquals(code,JsonPath.read(status(a),"$.room.code"));
+            assertEquals(code,JsonPath.read(queueStatus(a),"$.room.code"));
             assertEquals("MATCHED",JsonPath.read(search(b,"classic"),"$.status"));
             mvc.perform(post("/api/matchmaking/lobbies/join")
                 .header("Authorization","Bearer "+outsider.token)
@@ -124,7 +124,7 @@ class PublicMatchmakingPostgresIntegrationTests {
                 .header("Authorization","Bearer "+searching.token)).andExpect(status().isNotFound());
             assertEquals("SEARCHING",JsonPath.read(search(other,"classic"),"$.status"));
             assertEquals("MATCHED",JsonPath.read(search(third,"classic"),"$.status"));
-            assertNotEquals(privateCode,JsonPath.read(status(other),"$.room.code"));
+            assertNotEquals(privateCode,JsonPath.read(queueStatus(other),"$.room.code"));
             cancel(searching); // Idempotent
         } finally {leave(privateHost);leave(other);leave(third);cancel(searching);}
     }
@@ -136,7 +136,7 @@ class PublicMatchmakingPostgresIntegrationTests {
             String first=search(guest,"classic");
             String previous=JsonPath.read(first,"$.room.code");
             leave(host);
-            assertEquals("SEARCHING",JsonPath.read(status(guest),"$.status"));
+            assertEquals("SEARCHING",JsonPath.read(queueStatus(guest),"$.status"));
             String newMatch=search(replacement,"classic");
             assertEquals("MATCHED",JsonPath.read(newMatch,"$.status"));
             assertNotEquals(previous,JsonPath.read(newMatch,"$.room.code"));
@@ -160,10 +160,10 @@ class PublicMatchmakingPostgresIntegrationTests {
             String b=calls.get(1).get(20,TimeUnit.SECONDS);
             assertEquals(Set.of("MATCHED","SEARCHING"),
                 Set.of(JsonPath.read(a,"$.status"),JsonPath.read(b,"$.status")));
-            assertEquals("MATCHED",JsonPath.read(status(first),"$.status"));
+            assertEquals("MATCHED",JsonPath.read(queueStatus(first),"$.status"));
             int waiting=(int)java.util.stream.Stream.of(second,third)
                 .filter(player->{
-                    try {return "SEARCHING".equals(JsonPath.read(status(player),"$.status"));}
+                    try {return "SEARCHING".equals(JsonPath.read(queueStatus(player),"$.status"));}
                     catch(Exception ex){throw new IllegalStateException(ex);}
                 }).count();
             assertEquals(1,waiting);
