@@ -11,6 +11,7 @@ import com.FGInteractive.BatalhaNaval.match.model.PreparationRound;
 import com.FGInteractive.BatalhaNaval.match.mode.GameModeAvailabilityService;
 import java.util.function.Function;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse.LobbyPlayer;
+import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse.RematchStatus;
 import com.FGInteractive.BatalhaNaval.matchmaking.model.LobbyRoom;
 import com.FGInteractive.BatalhaNaval.shared.websocket.RealtimePresenceChangedEvent;
 import com.FGInteractive.BatalhaNaval.shared.websocket.RealtimeWebSocketHandler;
@@ -270,6 +271,80 @@ public class MatchmakingService {
         }
         if (changed) broadcast(room);
         return view;
+    }
+
+    /**
+     * Accept/withdraw a rematch invitation without creating a public queue entry.
+     * Both original players must still be in the finished room. A second acceptance
+     * creates an independent round in PREPARING with the SAME players and mode.
+     * The old battle/ships are discarded; readiness is not requested twice.
+     */
+    public LobbyResponse rematch(long userId, boolean accepted) {
+        if (!accepted) return voteRematch(userId, false, null);
+
+        // Keep the same lock order as new rooms: mode availability, then lobby mutex.
+        String modeId;
+        synchronized (mutex) {
+            LobbyRoom original = myRoom(userId);
+            if (original.phase() != LobbyRoom.Phase.FINISHED)
+                throw problem(HttpStatus.CONFLICT, "Finish the battle before requesting a rematch");
+            modeId = original.mode().id();
+        }
+        return modes.withEnabledMode(modeId, mode ->
+            voteRematch(userId, true, mode.id()));
+    }
+
+    private LobbyResponse voteRematch(long userId, boolean accepted, String expectedMode) {
+        LobbyRoom toPublish;
+        LobbyResponse response;
+        boolean changed;
+        synchronized (mutex) {
+            LobbyRoom original = myRoom(userId);
+            String oldCode = original.code();
+            if (original.phase() != LobbyRoom.Phase.FINISHED || original.guestId() == null)
+                throw problem(HttpStatus.CONFLICT, "Rematch is only available after a finished battle");
+            if (expectedMode != null && !original.mode().id().equals(expectedMode))
+                throw problem(HttpStatus.CONFLICT, "The game mode changed");
+            if (!oldCode.equals(membership.get(original.hostId()))
+                || !oldCode.equals(membership.get(original.guestId()))
+                || original.rematchDeclined())
+                throw problem(HttpStatus.CONFLICT, "The other player left the result screen");
+
+            try {
+                changed = original.voteRematch(userId, accepted);
+            } catch (IllegalStateException ex) {
+                throw problem(HttpStatus.CONFLICT, ex.getMessage());
+            }
+            if (accepted && original.bothRematchAccepted()) {
+                // Allocate a fresh room/code to ensure a fresh matchId and prevent
+                // stale preparation/battle snapshots from crossing between games.
+                String freshCode = newCode();
+                LobbyRoom next = new LobbyRoom(freshCode, original.hostId(),
+                    original.hostConnected(), original.mode(), original.publicMatch());
+                next.join(original.guestId(), original.guestConnected());
+                next.ready(next.hostId(), true);
+                next.ready(next.guestId(), true); // Transitions directly to PREPARING.
+                if (gddEnforced && GddMatchRules.appliesTo(next.mode())) {
+                    preparations.start(freshCode, next.hostId(), next.guestId(),
+                        next.mode(), Instant.now(), GddMatchRules.PREPARATION);
+                } else {
+                    preparations.start(freshCode, next.hostId(), next.guestId(), next.mode());
+                }
+                rooms.remove(oldCode);
+                preparations.remove(oldCode);
+                rooms.put(freshCode, next);
+                membership.put(next.hostId(), freshCode);
+                membership.put(next.guestId(), freshCode);
+                toPublish = next;
+                response = view(next);
+            } else {
+                toPublish = changed ? original : null;
+                response = view(original);
+            }
+        }
+        // I/O outside the shared lock, as with normal lobby changes.
+        if (toPublish != null) broadcast(toPublish);
+        return response;
     }
 
     /**
@@ -579,7 +654,14 @@ public class MatchmakingService {
                 room.guestConnected() && room.code().equals(membership.get(room.guestId()))));
         }
         return new LobbyResponse(room.code(), room.phase().name(), room.revision(), 2,
-            List.copyOf(players), room.mode().summary(), room.publicMatch());
+            List.copyOf(players), room.mode().summary(), room.publicMatch(),
+            room.phase() == LobbyRoom.Phase.FINISHED
+                ? new RematchStatus(room.hostRematchAccepted(), room.guestRematchAccepted(),
+                    room.code().equals(membership.get(room.hostId()))
+                        && room.code().equals(membership.get(room.guestId()))
+                        && !room.rematchDeclined(),
+                    room.rematchDeclined())
+                : null);
     }
 
     private LobbyPlayer player(long userId, boolean ready, boolean connected) {
