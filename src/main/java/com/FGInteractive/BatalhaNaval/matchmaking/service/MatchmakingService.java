@@ -264,6 +264,7 @@ public class MatchmakingService {
         boolean guestLeft = false;
         boolean surrendered = false;
         boolean departedFinished = false;
+        Long requeuedPlayer = null;
         synchronized (mutex) {
             String code = membership.get(userId);
             if (code == null) return;
@@ -290,7 +291,17 @@ public class MatchmakingService {
             } else {
                 membership.remove(userId);
                 preparations.remove(code);
-                if (room.hostId() == userId) {
+                if (room.publicMatch()) {
+                    // A canceled public match is not a private invitation room:
+                    // return the remaining user to the queue automatically.
+                    Long other = room.hostId() == userId ? room.guestId() : room.hostId();
+                    rooms.remove(code);
+                    if (other != null) {
+                        membership.remove(other);
+                        searching.put(other, room.mode().id());
+                        requeuedPlayer = other;
+                    }
+                } else if (room.hostId() == userId) {
                     guestToNotify = room.guestId();
                     rooms.remove(code);
                     if (guestToNotify != null) membership.remove(guestToNotify);
@@ -306,6 +317,8 @@ public class MatchmakingService {
             return;
         }
         realtime.sendToPlayer(userId, "LOBBY_LEFT", Map.of());
+        if (requeuedPlayer != null)
+            realtime.sendToPlayer(requeuedPlayer, "MATCH_SEARCHING", Map.of("status", "SEARCHING"));
         if (guestToNotify != null)
             realtime.sendToPlayer(guestToNotify, "LOBBY_CLOSED", Map.of());
         if (guestLeft || departedFinished) broadcast(room);
