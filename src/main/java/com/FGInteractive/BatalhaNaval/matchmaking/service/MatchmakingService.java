@@ -1,6 +1,7 @@
 package com.FGInteractive.BatalhaNaval.matchmaking.service;
 
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse;
+import com.FGInteractive.BatalhaNaval.matchmaking.dto.QueueResponse;
 import com.FGInteractive.BatalhaNaval.match.service.MatchPreparationStore;
 import com.FGInteractive.BatalhaNaval.match.model.BattleRound;
 import com.FGInteractive.BatalhaNaval.match.dto.BattleResponse;
@@ -20,6 +21,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,6 +47,10 @@ public class MatchmakingService {
     private final Object mutex = new Object();
     private final Map<String, LobbyRoom> rooms = new HashMap<>();
     private final Map<Long, String> membership = new HashMap<>();
+    // LinkedHashMap preserves FIFO for each mode without exposing private lobby codes.
+    // A searching user has no room membership until an opponent is actually paired.
+    private final Map<Long, String> searching = new LinkedHashMap<>();
+    private record QueueAssignment(QueueResponse response, LobbyRoom pairedRoom) {}
     private final UserRepository users;
     private final RealtimeWebSocketHandler realtime;
     private final MatchPreparationStore preparations;
@@ -106,6 +112,10 @@ public class MatchmakingService {
                 if (ownCode.equals(code)) return view(room); // Idempotent replay.
                 throw problem(HttpStatus.CONFLICT, "Leave your current lobby first");
             }
+            if (searching.containsKey(userId))
+                throw problem(HttpStatus.CONFLICT, "Cancel your public search before joining a room");
+            if (room.publicMatch())
+                throw problem(HttpStatus.CONFLICT, "Public matches cannot be entered by invitation code");
             if (room.isFull() || room.phase() != LobbyRoom.Phase.WAITING) {
                 throw problem(HttpStatus.CONFLICT, "Lobby is full or already preparing");
             }
@@ -118,6 +128,97 @@ public class MatchmakingService {
         }
         if (changed) broadcast(room);
         return view;
+    }
+
+    /**
+     * Atomic, mode-scoped, FIFO public matchmaking.
+     * Players searching have no room and cannot be joined via private codes.
+     * The existing ready/placement lifecycle is reused after pairing.
+     */
+    public QueueResponse findOpponent(long userId, String requestedModeId) {
+        QueueAssignment assignment = modes.withEnabledMode(requestedModeId, mode -> {
+            synchronized (mutex) {
+                String memberCode = membership.get(userId);
+                if (memberCode != null) {
+                    LobbyRoom existing = rooms.get(memberCode);
+                    if (existing != null && existing.publicMatch()
+                        && existing.mode().id().equals(mode.id()))
+                        return new QueueAssignment(new QueueResponse("MATCHED", mode.id(), view(existing)), null);
+                    throw problem(HttpStatus.CONFLICT, "Leave your current lobby first");
+                }
+                String alreadySearching = searching.get(userId);
+                if (alreadySearching != null) {
+                    if (alreadySearching.equals(mode.id()))
+                        return new QueueAssignment(new QueueResponse("SEARCHING", mode.id(), null), null);
+                    throw problem(HttpStatus.CONFLICT, "Cancel your current search before changing modes");
+                }
+
+                // Validate the requester before enqueuing them.
+                users.findById(userId).orElseThrow(
+                    () -> problem(HttpStatus.UNAUTHORIZED, "Player missing"));
+                Long opponent = searching.entrySet().stream()
+                    .filter(entry -> !entry.getKey().equals(userId)
+                        && entry.getValue().equals(mode.id())
+                        && !membership.containsKey(entry.getKey()))
+                    .map(Map.Entry::getKey).findFirst().orElse(null);
+                if (opponent == null) {
+                    searching.put(userId, mode.id());
+                    return new QueueAssignment(new QueueResponse("SEARCHING", mode.id(), null), null);
+                }
+                if (rooms.size() >= MAX_ROOMS)
+                    throw problem(HttpStatus.SERVICE_UNAVAILABLE, "Lobby capacity reached");
+
+                // Validate opponent before mutating queue indexes; all operations share mutex.
+                users.findById(opponent).orElseThrow(
+                    () -> problem(HttpStatus.CONFLICT, "Queued player is unavailable"));
+                LobbyRoom paired = new LobbyRoom(newCode(), opponent,
+                    realtime.isPlayerConnected(opponent), mode, true);
+                paired.join(userId, realtime.isPlayerConnected(userId));
+                // Validate both snapshots before indexing the room (same as private create).
+                // Temporarily create membership for rendering, fully under mutex.
+                searching.remove(opponent);
+                rooms.put(paired.code(), paired);
+                membership.put(opponent, paired.code());
+                membership.put(userId, paired.code());
+                return new QueueAssignment(
+                    new QueueResponse("MATCHED", mode.id(), view(paired)), paired);
+            }
+        });
+        if (assignment.pairedRoom() != null) {
+            broadcast(assignment.pairedRoom());
+            // Idempotent client reconciliation loads the canonical room snapshot.
+            realtime.sendToPlayer(assignment.pairedRoom().hostId(), "MATCH_FOUND",
+                Map.of("status", "MATCHED"));
+            realtime.sendToPlayer(assignment.pairedRoom().guestId(), "MATCH_FOUND",
+                Map.of("status", "MATCHED"));
+        }
+        return assignment.response();
+    }
+
+    /** Supports reload/reconnect: in queue, or paired into a public room. */
+    public QueueResponse queueStatus(long userId) {
+        synchronized (mutex) {
+            String code = membership.get(userId);
+            if (code != null) {
+                LobbyRoom paired = rooms.get(code);
+                if (paired != null && paired.publicMatch())
+                    return new QueueResponse("MATCHED", paired.mode().id(), view(paired));
+                throw problem(HttpStatus.NOT_FOUND, "Player is not searching");
+            }
+            String mode = searching.get(userId);
+            if (mode == null) throw problem(HttpStatus.NOT_FOUND, "Player is not searching");
+            return new QueueResponse("SEARCHING", mode, null);
+        }
+    }
+
+    public void cancelSearch(long userId) {
+        synchronized (mutex) {
+            if (searching.remove(userId) != null) return;
+            String code = membership.get(userId);
+            if (code != null && rooms.containsKey(code) && rooms.get(code).publicMatch())
+                throw problem(HttpStatus.CONFLICT, "Opponent already found; leave the room instead");
+            // Idempotent when user isn't searching.
+        }
     }
 
     public LobbyResponse mine(long userId) {
@@ -440,7 +541,7 @@ public class MatchmakingService {
                 room.guestConnected() && room.code().equals(membership.get(room.guestId()))));
         }
         return new LobbyResponse(room.code(), room.phase().name(), room.revision(), 2,
-            List.copyOf(players), room.mode().summary());
+            List.copyOf(players), room.mode().summary(), room.publicMatch());
     }
 
     private LobbyPlayer player(long userId, boolean ready, boolean connected) {
@@ -460,8 +561,8 @@ public class MatchmakingService {
     }
 
     private void requireFree(long userId) {
-        if (membership.containsKey(userId)) {
-            throw problem(HttpStatus.CONFLICT, "Player is already in a lobby");
+        if (membership.containsKey(userId) || searching.containsKey(userId)) {
+            throw problem(HttpStatus.CONFLICT, "Player is already in a lobby or search");
         }
     }
 
