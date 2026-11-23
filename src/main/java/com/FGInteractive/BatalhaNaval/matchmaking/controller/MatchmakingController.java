@@ -4,6 +4,7 @@ import com.FGInteractive.BatalhaNaval.matchmaking.dto.JoinLobbyRequest;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.CreateLobbyRequest;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.LobbyResponse;
 import com.FGInteractive.BatalhaNaval.matchmaking.dto.SetReadyRequest;
+import com.FGInteractive.BatalhaNaval.matchmaking.dto.SetRematchRequest;
 import com.FGInteractive.BatalhaNaval.matchmaking.service.MatchmakingService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -43,6 +44,12 @@ public class MatchmakingController {
     public LobbyResponse ready(@AuthenticationPrincipal Jwt jwt,
                                @Valid @RequestBody SetReadyRequest request) {
         return matchmaking.ready(Long.parseLong(jwt.getSubject()), request.ready());
+    }
+
+    @PutMapping("/me/rematch")
+    public LobbyResponse rematch(@AuthenticationPrincipal Jwt jwt,
+                                 @Valid @RequestBody SetRematchRequest request) {
+        return matchmaking.rematch(Long.parseLong(jwt.getSubject()), request.accepted());
     }
 
     @DeleteMapping("/me")
