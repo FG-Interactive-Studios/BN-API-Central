@@ -99,7 +99,7 @@ public class SessionService {
             JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
 
         return new TokenResponse("Bearer", jwt, ACCESS_LIFETIME.toSeconds(), refreshToken,
-            new PlayerProfile(user.getId(), user.getNickname(), email, user.getAvatarId(), user.getCreatedAt()));
+            new PlayerProfile(user.getId(), user.getNickname(), email, user.getAvatarId(), user.getCreatedAt(), user.isAdmin()));
     }
 
     private static String newRefreshToken() {
