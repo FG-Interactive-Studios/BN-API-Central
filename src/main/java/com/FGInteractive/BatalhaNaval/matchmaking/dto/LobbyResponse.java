@@ -9,7 +9,8 @@ public record LobbyResponse(
     long revision,
     int capacity,
     List<LobbyPlayer> players,
-    ModeSummary mode
+    ModeSummary mode,
+    boolean publicMatch
 ) {
     public record LobbyPlayer(
         long id, String nickname, String avatarId, boolean ready, boolean connected
