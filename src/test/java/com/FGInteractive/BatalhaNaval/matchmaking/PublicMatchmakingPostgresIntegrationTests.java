@@ -96,7 +96,7 @@ class PublicMatchmakingPostgresIntegrationTests {
             mvc.perform(get("/api/matchmaking/state")
                 .header("Authorization","Bearer "+privateHost.token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.room.code").value(JsonPath.read(privateRoom,"$.code")))
+                .andExpect(jsonPath("$.room.code").value((String)JsonPath.read(privateRoom,"$.code")))
                 .andExpect(jsonPath("$.room.publicMatch").value(false));
             leave(a);
             mvc.perform(get("/api/matchmaking/state")
