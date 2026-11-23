@@ -14,6 +14,7 @@ public final class LobbyRoom {
     private final String code;
     private final long hostId;
     private final GameModeDefinition mode;
+    private final boolean publicMatch;
     private Long guestId;
     private boolean hostReady;
     private boolean guestReady;
@@ -23,15 +24,22 @@ public final class LobbyRoom {
     private long revision = 1;
 
     public LobbyRoom(String code, long hostId, boolean hostConnected, GameModeDefinition mode) {
+        this(code, hostId, hostConnected, mode, false);
+    }
+
+    public LobbyRoom(String code, long hostId, boolean hostConnected, GameModeDefinition mode,
+                     boolean publicMatch) {
         this.code = code;
         this.hostId = hostId;
         this.hostConnected = hostConnected;
         this.mode = java.util.Objects.requireNonNull(mode);
+        this.publicMatch = publicMatch;
     }
 
     public String code() { return code; }
     public long hostId() { return hostId; }
     public GameModeDefinition mode() { return mode; }
+    public boolean publicMatch() { return publicMatch; }
     public Long guestId() { return guestId; }
     public boolean hostReady() { return hostReady; }
     public boolean guestReady() { return guestReady; }
