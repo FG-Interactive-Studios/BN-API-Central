@@ -40,7 +40,7 @@ class StoreCatalogBootstrapPostgresIntegrationTests {
         }
         assertEquals(18,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_catalog_managed",Integer.class));
-        assertEquals(4,jdbc.queryForObject(
+        assertEquals(7,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_items WHERE enabled=TRUE",Integer.class));
         assertEquals(2,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_bundle_components WHERE bundle_id='bundle_corsair'",
