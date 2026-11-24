@@ -11,8 +11,10 @@ public record LobbyResponse(
     List<LobbyPlayer> players,
     ModeSummary mode,
     boolean publicMatch,
-    RematchStatus rematch
+    RematchStatus rematch,
+    RivalryStatus rivalry
 ) {
+    public record RivalryStatus(int hostWins, int guestWins, int draws) {}
     public record RematchStatus(boolean hostAccepted, boolean guestAccepted,
                                 boolean available, boolean declined) {}
     public record LobbyPlayer(
