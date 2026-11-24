@@ -28,16 +28,17 @@ class StoreCatalogBootstrapPostgresIntegrationTests {
                 "SELECT applied_revision FROM store_catalog_managed WHERE item_id=?",
                 Integer.class,legacy));
         }
-        for(String staged: List.of("skin_corsair","skin_space","skin_pirate",
-                "skin_magnate","captain_default","captain_corsair",
-                "captain_space","bundle_corsair","bundle_space")) {
+        for(String staged: List.of("sound_sonar","sound_deep")) {
             assertEquals(1,jdbc.queryForObject(
-                "SELECT COUNT(*) FROM store_items WHERE id=? AND enabled=FALSE AND price=0",
+                "SELECT COUNT(*) FROM store_items WHERE id=? AND enabled=FALSE",
                 Integer.class,staged),staged);
-            assertEquals(1,jdbc.queryForObject(
-                "SELECT applied_revision FROM store_catalog_managed WHERE item_id=?",
-                Integer.class,staged));
         }
+        assertEquals(100,jdbc.queryForObject(
+            "SELECT price FROM store_items WHERE id='skin_pirate' AND premium_only",Integer.class));
+        assertEquals(200,jdbc.queryForObject(
+            "SELECT price FROM store_items WHERE id='captain_pirate' AND premium_only",Integer.class));
+        assertEquals(true,jdbc.queryForObject(
+            "SELECT enabled FROM store_items WHERE id='captain_default'",Boolean.class));
         assertEquals(40,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_catalog_managed",Integer.class));
         assertEquals(38,jdbc.queryForObject(
