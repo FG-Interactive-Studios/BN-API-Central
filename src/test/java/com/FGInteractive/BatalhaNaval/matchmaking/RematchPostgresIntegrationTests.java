@@ -117,7 +117,8 @@ class RematchPostgresIntegrationTests {
             assertEquals(false,JsonPath.read(first,"$.rematch.guestAccepted"));
             assertEquals(true,JsonPath.read(first,"$.rematch.available"));
             String same=vote(host,true);
-            assertEquals(JsonPath.read(first,"$.revision"),JsonPath.read(same,"$.revision"),
+            assertEquals(((Number)JsonPath.read(first,"$.revision")).longValue(),
+                ((Number)JsonPath.read(same,"$.revision")).longValue(),
                 "Repeated vote must be idempotent");
             String withdrawn=vote(host,false);
             assertEquals(false,JsonPath.read(withdrawn,"$.rematch.hostAccepted"));
@@ -190,7 +191,7 @@ class RematchPostgresIntegrationTests {
             String roomA=response(a,"/api/matchmaking/lobbies/me");
             String roomB=response(b,"/api/matchmaking/lobbies/me");
             assertEquals("PREPARING",JsonPath.read(roomA,"$.status"));
-            assertEquals(JsonPath.read(roomA,"$.code"),JsonPath.read(roomB,"$.code"));
+            assertEquals((String)JsonPath.read(roomA,"$.code"),(String)JsonPath.read(roomB,"$.code"));
             assertEquals(true,JsonPath.read(roomA,"$.publicMatch"));
             assertNotNull(JsonPath.read(response(a,"/api/matches/me/placement"),"$.preparationId"));
         } finally {executor.shutdownNow();leave(a);leave(b);}
