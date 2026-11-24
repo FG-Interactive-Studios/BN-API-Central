@@ -31,6 +31,11 @@ public class BattleController {
         return battles.useAbility(Long.parseLong(jwt.getSubject()), request);
     }
 
+    @PostMapping("/shots/desperation")
+    public BattleResponse desperation(@AuthenticationPrincipal Jwt jwt) {
+        return battles.fireDesperately(Long.parseLong(jwt.getSubject()));
+    }
+
     @PostMapping("/shots")
     public BattleResponse fire(@AuthenticationPrincipal Jwt jwt,
                                @RequestBody FireRequest request) {

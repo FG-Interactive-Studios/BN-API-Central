@@ -109,6 +109,46 @@ class BattleRoundTests {
         assertEquals(10L,battle.view(11).winnerId().longValue());
     }
 
+    @Test void desperateShotNeverReadsShipsAndCountsAsExactlyOneOrdinaryShot() {
+        var mode=duel(new AlternatingTurnRule());
+        for(int iteration=0;iteration<40;iteration++) {
+            var game=new BattleRound("DEMO99",mode,10,11,
+                board(mode,0,0),board(mode,1,1));
+            assertFalse(game.view(10).yourDesperationUsed());
+            assertFalse(game.view(11).yourDesperationUsed());
+            assertThrows(IllegalStateException.class,
+                ()->game.fireDesperatelyAt(11,java.time.Instant.now()));
+            assertFalse(game.view(11).yourDesperationUsed(),
+                "Out-of-turn request cannot consume the free use");
+            Cell random=game.fireDesperatelyAt(10,java.time.Instant.now());
+            assertTrue(mode.geometry().contains(random));
+            assertEquals(random.row(),game.view(10).shotsFired().get(0).row());
+            assertEquals(random.col(),game.view(10).shotsFired().get(0).col());
+            assertEquals(game.view(10).shotsFired(),game.view(11).shotsReceived(),
+                "Opponent sees the normal shot only, not the unrevealed fleet");
+            assertTrue(game.view(10).yourDesperationUsed());
+            assertFalse(game.view(11).yourDesperationUsed());
+            assertEquals(1,game.view(10).shotsFired().size());
+            assertThrows(IllegalStateException.class,
+                ()->game.fireDesperatelyAt(10,java.time.Instant.now()));
+            assertEquals(1,game.view(10).shotsFired().size());
+        }
+        var fresh=new BattleRound("REMATCH",mode,10,11,
+            board(mode,0,0),board(mode,1,1));
+        assertFalse(fresh.view(10).yourDesperationUsed(),
+            "Each new match, including rematches, starts with a fresh free use");
+    }
+
+    @Test void rejectsDesperationAfterMatchIsOver() {
+        var mode=duel(new AlternatingTurnRule());
+        var game=new BattleRound("DONE11",mode,10,11,
+            board(mode,0,0),board(mode,1,1));
+        game.forfeit(10);
+        assertThrows(IllegalStateException.class,
+            ()->game.fireDesperatelyAt(11,java.time.Instant.now()));
+        assertFalse(game.view(11).yourDesperationUsed());
+    }
+
     @Test void rejectsInvalidAttackAndVictoryRuleAtModeCompositionTime() {
         var standard=GameModePresets.classic();
         var rules=new EnumMap<RuleSlot,RuleModule>(standard.rules());

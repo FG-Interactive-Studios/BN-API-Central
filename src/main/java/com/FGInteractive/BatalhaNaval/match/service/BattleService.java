@@ -60,6 +60,31 @@ public class BattleService {
     }
 
 
+    /** Random ordinary shot; never accepts coordinates or reads the opponent's fleet.
+     * Reuses the battle mutex and same private event dispatch as regular fire.
+     */
+    public BattleResponse fireDesperately(long userId) {
+        matchmaking.sweepGameRulesAt(Instant.now());
+        BattleChanges change=matchmaking.withBattleRoom(userId,room -> {
+            BattleRound battle=store.battle(room.code());
+            try {
+                battle.fireDesperatelyAt(userId,Instant.now());
+            } catch (IllegalArgumentException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, ex.getMessage());
+            } catch (IllegalStateException ex) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
+            }
+            if(battle.finished())room.finishBattle();
+            return new BattleChanges(room.hostId(),room.guestId(),
+                battle.view(userId),battle.view(room.hostId()),battle.view(room.guestId()),
+                battle.finished());
+        });
+        realtime.sendToPlayer(change.hostId(),"BATTLE_UPDATED",change.host());
+        realtime.sendToPlayer(change.guestId(),"BATTLE_UPDATED",change.guest());
+        if(change.finished())matchmaking.publishRoomFor(userId);
+        return change.self();
+    }
+
     /** Same lock, error mapping and PRIVATE per-player WebSocket snapshots as shots. */
     public BattleResponse useAbility(long userId, AbilityRequest request) {
         matchmaking.sweepGameRulesAt(Instant.now());

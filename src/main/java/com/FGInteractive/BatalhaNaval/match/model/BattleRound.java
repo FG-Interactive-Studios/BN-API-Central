@@ -19,6 +19,8 @@ public final class BattleRound {
     private final long guestId;
     private final Map<Long, Board> boards;
     private final Map<Long, LinkedHashMap<Cell, ShotRecord>> shots = new HashMap<>();
+    /** A desperate shot is a normal shot with server-chosen coordinates, once per player. */
+    private final Set<Long> desperationUsed = new HashSet<>();
     private static final SecureRandom RANDOM = new SecureRandom();
     private final Map<Long, Set<Cell>> abilityPointCells = new HashMap<>();
     private final Map<Long, Integer> earnedAbilityPoints = new HashMap<>();
@@ -346,6 +348,28 @@ public final class BattleRound {
         advanceTurn(attacker,defender,impact,now);
     }
 
+    /** Picks uniformly among all legal, not-yet-attacked cells; no fleet information is read.
+     * Uses the ordinary shot resolver, turn rules, shields and timers.
+     * The once-per-player flag is consumed ONLY after the legal shot succeeds.
+     */
+    public Cell fireDesperatelyAt(long attacker, Instant now) {
+        requireParticipant(attacker);
+        if (finished()) throw new IllegalStateException("Match already finished");
+        requirePlayableAt(now);
+        if (turnPlayerId != attacker) throw new IllegalStateException("Not your turn");
+        if (desperationUsed.contains(attacker))
+            throw new IllegalStateException("Aperta e Reza already used this match");
+        var fired=shots.get(attacker);
+        var candidates=new ArrayList<>(mode.geometry().cells());
+        candidates.removeIf(cell->fired.containsKey(cell) && !fired.get(cell).blocked());
+        if(candidates.isEmpty())
+            throw new IllegalStateException("No available target cells");
+        Cell target=candidates.get(RANDOM.nextInt(candidates.size()));
+        fireAt(attacker,target,now);
+        desperationUsed.add(attacker);
+        return target;
+    }
+
     public void useAbility(long attacker,String abilityId,List<Cell> targets) {
         useAbilityAt(attacker,abilityId,targets,Instant.now());
     }
@@ -445,7 +469,8 @@ public final class BattleRound {
             List.copyOf(radarReports.get(player)),List.copyOf(effects),
             turnDeadlineAt(),matchDeadlineAt(),paused(),
             consecutiveMissedTurns.get(player),earnedAbilityPoints.get(player),
-            List.copyOf(abilityPointCells.getOrDefault(player,Set.of())));
+            List.copyOf(abilityPointCells.getOrDefault(player,Set.of())),
+            desperationUsed.contains(player));
     }
 
     private void requireParticipant(long player) {
