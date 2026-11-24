@@ -31,12 +31,12 @@ public class StoreService {
             """, playerId);
         jdbc.update("""
             INSERT INTO player_items (user_id, item_id)
-            SELECT ?, id FROM store_items WHERE enabled = TRUE AND price = 0 AND category <> 'BUNDLE'
+            SELECT ?, id FROM store_items WHERE enabled = TRUE AND price = 0 AND premium_only = FALSE AND category <> 'BUNDLE'
             ON CONFLICT DO NOTHING
             """, playerId);
         jdbc.update("""
             INSERT INTO player_equipment (user_id, category, item_id)
-            SELECT ?, category, id FROM store_items WHERE enabled = TRUE AND price = 0 AND category <> 'BUNDLE'
+            SELECT ?, category, id FROM store_items WHERE enabled = TRUE AND price = 0 AND premium_only = FALSE AND category <> 'BUNDLE'
             ON CONFLICT (user_id, category) DO NOTHING
             """, playerId);
     }
@@ -47,13 +47,13 @@ public class StoreService {
             Integer.class, playerId);
     }
 
-    private record Product(String id, String category, int price, boolean enabled) {}
+    private record Product(String id, String category, int price, boolean enabled, boolean premiumOnly) {}
 
     private Product product(String itemId) {
         List<Product> rows = jdbc.query("""
-            SELECT id, category, price, enabled FROM store_items WHERE id = ?
+            SELECT id, category, price, enabled, premium_only FROM store_items WHERE id = ?
             """, (rs, row) -> new Product(rs.getString("id"),
-                rs.getString("category"), rs.getInt("price"), rs.getBoolean("enabled")),
+                rs.getString("category"), rs.getInt("price"), rs.getBoolean("enabled"), rs.getBoolean("premium_only")),
             itemId);
         if (rows.isEmpty()) {
             throw new StoreException(HttpStatus.NOT_FOUND, "ITEM_NOT_FOUND", "Item não encontrado.");
@@ -62,8 +62,7 @@ public class StoreService {
     }
 
     private void requireEnabled(Product item) {
-        // CAPTAIN still requires its own presentation/entitlement integration.
-        if (!item.enabled() || !List.of("SKIN","SOUND","TAUNT","BUNDLE","ATTACK","CELEBRATION","FUNERAL","TITLE","COMMENTATOR","FRAME","BOARD_THEME").contains(item.category())) {
+        if (!item.enabled() || !List.of("SKIN","SOUND","TAUNT","CAPTAIN","BUNDLE","ATTACK","CELEBRATION","FUNERAL","TITLE","COMMENTATOR","FRAME","BOARD_THEME").contains(item.category())) {
             throw new StoreException(HttpStatus.CONFLICT, "ITEM_UNAVAILABLE",
                 "Esse item ainda não está disponível.");
         }
@@ -82,7 +81,7 @@ public class StoreService {
             SELECT i.category,i.id FROM player_equipment e
             JOIN store_items i ON i.id=e.item_id AND i.category=e.category
             WHERE e.user_id=? AND i.enabled=TRUE
-              AND i.category IN ('ATTACK','CELEBRATION','FUNERAL','TITLE','COMMENTATOR','FRAME','BOARD_THEME')
+              AND i.category IN ('CAPTAIN','SKIN','ATTACK','CELEBRATION','FUNERAL','TITLE','COMMENTATOR','FRAME','BOARD_THEME')
             """, rs -> { result.put(rs.getString("category"),rs.getString("id")); },playerId);
         return java.util.Map.copyOf(result);
     }
@@ -153,7 +152,7 @@ public class StoreService {
         int credits = ((Number) wallet.get("credits")).intValue();
         int premiumCredits = ((Number) wallet.get("premium_credits")).intValue();
         List<StoreDTO.Item> items = jdbc.query("""
-            SELECT i.id, i.category, i.name, i.description, i.price, i.enabled,
+            SELECT i.id, i.category, i.name, i.description, i.price, i.enabled, i.premium_only,
                    (pi.item_id IS NOT NULL) AS owned,
                    (pe.item_id IS NOT NULL) AS equipped
             FROM store_items i
@@ -164,7 +163,7 @@ public class StoreService {
             """, (rs, row) -> new StoreDTO.Item(
                 rs.getString("id"), rs.getString("category"), rs.getString("name"),
                 rs.getString("description"), rs.getInt("price"), rs.getBoolean("enabled"),
-                rs.getBoolean("owned"), rs.getBoolean("equipped"), premiumPrice(rs.getInt("price")), rs.getString("category").equals("BUNDLE")?bundleComponents(rs.getString("id")):List.of()), playerId, playerId);
+                rs.getBoolean("owned"), rs.getBoolean("equipped"), rs.getBoolean("premium_only")?rs.getInt("price"):premiumPrice(rs.getInt("price")), rs.getString("category").equals("BUNDLE")?bundleComponents(rs.getString("id")):List.of(),rs.getBoolean("premium_only")), playerId, playerId);
         return new StoreDTO(credits, premiumCredits, items, demoPremiumEnabled);
     }
 
@@ -191,10 +190,11 @@ public class StoreService {
             throw new StoreException(HttpStatus.CONFLICT, "ALREADY_OWNED",
                 "Este item já está no seu inventário.");
         }
+        if (!premium && item.premiumOnly()) throw new StoreException(HttpStatus.CONFLICT,"PREMIUM_REQUIRED","Use moedas navais para adquirir este cosmético.");
         List<String> components=purchasableComponents(item);
         if (!components.isEmpty() && components.stream().allMatch(id->owns(playerId,id)))
             throw new StoreException(HttpStatus.CONFLICT,"ALREADY_OWNED","Você já possui todos os itens desta coleção.");
-        int price = premium ? premiumPrice(item.price()) : item.price();
+        int price = premium && !item.premiumOnly() ? premiumPrice(item.price()) : item.price();
         int balance = premium ? jdbc.queryForObject(
             "SELECT premium_credits FROM player_wallets WHERE user_id=?", Integer.class, playerId) : credits;
         if (balance < price) {

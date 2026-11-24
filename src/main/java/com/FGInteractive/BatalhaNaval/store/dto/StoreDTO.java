@@ -4,5 +4,5 @@ import java.util.List;
 
 public record StoreDTO(int credits, int premiumCredits, List<Item> items, boolean demoPremiumEnabled) {
     public record Item(String id, String category, String name, String description,
-                       int price, boolean enabled, boolean owned, boolean equipped, int premiumPrice, List<String> components) {}
+                       int price, boolean enabled, boolean owned, boolean equipped, int premiumPrice, List<String> components, boolean premiumOnly) {}
 }

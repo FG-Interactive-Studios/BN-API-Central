@@ -38,9 +38,9 @@ class StoreCatalogBootstrapPostgresIntegrationTests {
                 "SELECT applied_revision FROM store_catalog_managed WHERE item_id=?",
                 Integer.class,staged));
         }
-        assertEquals(35,jdbc.queryForObject(
+        assertEquals(40,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_catalog_managed",Integer.class));
-        assertEquals(24,jdbc.queryForObject(
+        assertEquals(38,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_items WHERE enabled=TRUE",Integer.class));
         assertEquals(2,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_bundle_components WHERE bundle_id='bundle_corsair'",
@@ -58,7 +58,7 @@ class StoreCatalogBootstrapPostgresIntegrationTests {
     @Transactional
     void restartIsIdempotentPreservesReviewedPricesAndDisablesAccidentalDraftActivation() {
         jdbc.update("UPDATE store_items SET price=777 WHERE id='skin_coral'");
-        jdbc.update("UPDATE store_items SET enabled=TRUE WHERE id='skin_corsair'");
+        jdbc.update("UPDATE store_items SET enabled=TRUE WHERE id='sound_sonar'");
         jdbc.update("UPDATE store_items SET price=913 WHERE id='skin_space'");
         catalog.synchronize();
         catalog.synchronize();
@@ -67,8 +67,8 @@ class StoreCatalogBootstrapPostgresIntegrationTests {
         assertEquals(913,jdbc.queryForObject(
             "SELECT price FROM store_items WHERE id='skin_space'",Integer.class));
         assertEquals(false,jdbc.queryForObject(
-            "SELECT enabled FROM store_items WHERE id='skin_corsair'",Boolean.class));
-        assertEquals(35,jdbc.queryForObject(
+            "SELECT enabled FROM store_items WHERE id='sound_sonar'",Boolean.class));
+        assertEquals(40,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_catalog_managed",Integer.class));
         assertEquals(7,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_bundle_components",Integer.class));

@@ -114,6 +114,25 @@ class StoreCosmeticsPostgresIntegrationTests {
     }
 
     @Test
+    void officialCaptainUsesNavalCoinsAndRequiresOwnership() throws Exception {
+        Player p=player();
+        assertEquals("PREMIUM_REQUIRED",JsonPath.read(purchase(p,"captain_pirate",409),"$.code"));
+        assertEquals("NOT_OWNED",JsonPath.read(equip(p,"captain_pirate",409),"$.code"));
+        String body="{\"packId\":\"demo_300\",\"requestId\":\""+UUID.randomUUID()+"\"}";
+        mvc.perform(post("/api/store/demo-premium").header("Authorization","Bearer "+p.token())
+            .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        mvc.perform(post("/api/store/purchase/captain_pirate").param("premium","true")
+            .header("Authorization","Bearer "+p.token())).andExpect(status().isOk())
+            .andExpect(jsonPath("$.premiumCredits").value(100)).andExpect(jsonPath("$.credits").value(300));
+        equip(p,"captain_pirate",200);
+        mvc.perform(post("/api/matchmaking/lobbies").header("Authorization","Bearer "+p.token())
+            .contentType(MediaType.APPLICATION_JSON).content("{\"modeId\":\"classic\"}"))
+            .andExpect(status().isCreated()).andExpect(jsonPath("$.players[0].cosmetics.CAPTAIN").value("captain_pirate"));
+        mvc.perform(delete("/api/matchmaking/lobbies/me").header("Authorization","Bearer "+p.token()))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
     void anonymousCannotReadOrModifyStore() throws Exception {
         mvc.perform(get("/api/store")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/store/purchase/skin_coral")).andExpect(status().isUnauthorized());
@@ -160,9 +179,9 @@ class StoreCosmeticsPostgresIntegrationTests {
     void disabledAndUnknownItemsCannotBePurchasedOrEquipped() throws Exception {
         Player p=player();
         assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"sound_sonar",409),"$.code"));
-        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"skin_corsair",409),"$.code"));
-        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"captain_corsair",409),"$.code"));
-        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"bundle_corsair",409),"$.code"));
+        assertEquals("PREMIUM_REQUIRED",JsonPath.read(purchase(p,"skin_corsair",409),"$.code"));
+        assertEquals("PREMIUM_REQUIRED",JsonPath.read(purchase(p,"captain_corsair",409),"$.code"));
+        assertEquals("PREMIUM_REQUIRED",JsonPath.read(purchase(p,"bundle_corsair",409),"$.code"));
         assertEquals("ITEM_UNAVAILABLE",JsonPath.read(equip(p,"bundle_corsair",409),"$.code"));
         assertEquals("ITEM_NOT_FOUND",JsonPath.read(purchase(p,"does-not-exist",404),"$.code"));
         assertEquals("NOT_OWNED",JsonPath.read(equip(p,"skin_abyss",409),"$.code"));
