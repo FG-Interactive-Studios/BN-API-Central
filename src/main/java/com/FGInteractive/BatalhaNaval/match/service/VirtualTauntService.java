@@ -49,6 +49,8 @@ public class VirtualTauntService {
     public record TauntMessage(String id, String packId, String message,
                                long senderId, String roomCode, Instant sentAt) {}
 
+    private record Delivery(TauntMessage event, List<Long> recipients) {}
+
     public TauntMessage send(long userId, Integer index) {
         if(index==null || index<0 || index>=4)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Invalid provocation index");
@@ -60,7 +62,7 @@ public class VirtualTauntService {
                 new ResponseStatusException(HttpStatus.CONFLICT,"Equip a provocation pack first"));
         List<String> phrases=PACKS.get(equipped);
         if(phrases==null)throw new ResponseStatusException(HttpStatus.CONFLICT,"Unknown equipped pack");
-        TauntMessage event=matchmaking.withBattleRoom(userId, room -> {
+        Delivery delivery=matchmaking.withBattleRoom(userId, room -> {
             if(room.phase()!=LobbyRoom.Phase.PLAYING)
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Provocations only work during battle");
             String key=room.code()+":"+userId;
@@ -70,13 +72,13 @@ public class VirtualTauntService {
                 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
                     "Wait five seconds between provocations");
             lastSend.put(key,now);
-            return new TauntMessage(room.code()+":"+userId+":"+now, equipped,
+            TauntMessage event=new TauntMessage(room.code()+":"+userId+":"+now, equipped,
                 phrases.get(index),userId,room.code(),Instant.now());
+            return new Delivery(event,List.of(room.hostId(),room.guestId()));
         });
         // Send only after server membership, ownership and rate-limit checks.
-        var opponents=matchmaking.withBattleRoom(userId, room ->
-            List.of(room.hostId(),room.guestId()));
-        for(long recipient:opponents)realtime.sendToPlayer(recipient,"TAUNT_SENT",event);
-        return event;
+        for(long recipient:delivery.recipients())
+            realtime.sendToPlayer(recipient,"TAUNT_SENT",delivery.event());
+        return delivery.event();
     }
 }
