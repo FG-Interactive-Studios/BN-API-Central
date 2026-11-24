@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class StoreCatalogBootstrapService {
     private static final Logger log = LoggerFactory.getLogger(StoreCatalogBootstrapService.class);
     private static final Pattern ID = Pattern.compile("[a-z][a-z0-9_]{1,39}");
-    private static final Set<String> CATEGORIES = Set.of("SKIN","SOUND","CAPTAIN","BUNDLE");
+    private static final Set<String> CATEGORIES = Set.of("SKIN","SOUND","CAPTAIN","BUNDLE","TAUNT");
     private static final Set<String> STATUSES = Set.of("DRAFT","RELEASED");
     private final JdbcTemplate jdbc;
     private final JsonMapper mapper;
