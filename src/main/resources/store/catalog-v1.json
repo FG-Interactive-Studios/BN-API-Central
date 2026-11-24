@@ -217,6 +217,48 @@
         "skin_space",
         "captain_space"
       ]
+    },
+    {
+      "id": "taunt_default",
+      "category": "TAUNT",
+      "name": "Provocações Gratuitas",
+      "description": "Frases de capitão para provocar sem ofender.",
+      "price": 0,
+      "displayOrder": 160,
+      "revision": 1,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": []
+    },
+    {
+      "id": "taunt_banter",
+      "category": "TAUNT",
+      "name": "Tio do Pavê Naval",
+      "description": "Coleção de trocadilhos questionáveis. Quem ri por último, afunda melhor.",
+      "price": 90,
+      "displayOrder": 170,
+      "revision": 1,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": []
+    },
+    {
+      "id": "taunt_panic",
+      "category": "TAUNT",
+      "name": "Surto Marítimo",
+      "description": "Dramas e gritos de um capitão em completo desespero.",
+      "price": 140,
+      "displayOrder": 180,
+      "revision": 1,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": []
     }
   ]
 }
