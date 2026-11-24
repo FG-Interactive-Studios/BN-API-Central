@@ -10,8 +10,11 @@ public record LobbyResponse(
     int capacity,
     List<LobbyPlayer> players,
     ModeSummary mode,
-    boolean publicMatch
+    boolean publicMatch,
+    RematchStatus rematch
 ) {
+    public record RematchStatus(boolean hostAccepted, boolean guestAccepted,
+                                boolean available, boolean declined) {}
     public record LobbyPlayer(
         long id, String nickname, String avatarId, boolean ready, boolean connected
     ) {}

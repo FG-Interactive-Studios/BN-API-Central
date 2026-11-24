@@ -20,6 +20,9 @@ public final class LobbyRoom {
     private boolean guestReady;
     private boolean hostConnected;
     private boolean guestConnected;
+    private boolean hostRematchAccepted;
+    private boolean guestRematchAccepted;
+    private boolean rematchDeclined;
     private Phase phase = Phase.WAITING;
     private long revision = 1;
 
@@ -45,6 +48,10 @@ public final class LobbyRoom {
     public boolean guestReady() { return guestReady; }
     public boolean hostConnected() { return hostConnected; }
     public boolean guestConnected() { return guestConnected; }
+    public boolean hostRematchAccepted() { return hostRematchAccepted; }
+    public boolean guestRematchAccepted() { return guestRematchAccepted; }
+    public boolean rematchDeclined() { return rematchDeclined; }
+    public boolean bothRematchAccepted() { return hostRematchAccepted && guestRematchAccepted; }
     public Phase phase() { return phase; }
     public long revision() { return revision; }
     public boolean isFull() { return guestId != null; }
@@ -104,11 +111,32 @@ public final class LobbyRoom {
         revision++;
     }
 
+    /**
+     * The first player requests a rematch, the other must separately consent.
+     * Do not enter PREPARING until both have explicitly accepted.
+     * Called by MatchmakingService under its membership mutex.
+     */
+    public boolean voteRematch(long userId, boolean accepted) {
+        if (phase != Phase.FINISHED || !isFull() || rematchDeclined)
+            throw new IllegalStateException("Rematch is not available");
+        boolean changed;
+        if (hostId == userId) {
+            changed = hostRematchAccepted != accepted;
+            hostRematchAccepted = accepted;
+        } else if (Objects.equals(guestId, userId)) {
+            changed = guestRematchAccepted != accepted;
+            guestRematchAccepted = accepted;
+        } else throw new IllegalArgumentException("Not a room participant");
+        if (changed) revision++;
+        return changed;
+    }
+
     /** A finished participant leaves the result screen; keep it for the other. */
     public void departAfterFinish(long userId) {
         if (phase != Phase.FINISHED || !contains(userId))
             throw new IllegalStateException("No finished match to leave");
         setConnected(userId, false);
+        rematchDeclined = true;
         revision++;
     }
 
