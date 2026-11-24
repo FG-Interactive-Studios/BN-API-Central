@@ -47,13 +47,13 @@ public class StoreService {
             Integer.class, playerId);
     }
 
-    private record Product(String id, String category, int price, boolean enabled, boolean premiumOnly) {}
+    private record Product(String id, String category, int price, boolean enabled, boolean premiumOnly, boolean saleEnabled) {}
 
     private Product product(String itemId) {
         List<Product> rows = jdbc.query("""
-            SELECT id, category, price, enabled, premium_only FROM store_items WHERE id = ?
+            SELECT id, category, price, enabled, premium_only, sale_enabled FROM store_items WHERE id = ?
             """, (rs, row) -> new Product(rs.getString("id"),
-                rs.getString("category"), rs.getInt("price"), rs.getBoolean("enabled"), rs.getBoolean("premium_only")),
+                rs.getString("category"), rs.getInt("price"), rs.getBoolean("enabled"), rs.getBoolean("premium_only"), rs.getBoolean("sale_enabled")),
             itemId);
         if (rows.isEmpty()) {
             throw new StoreException(HttpStatus.NOT_FOUND, "ITEM_NOT_FOUND", "Item não encontrado.");
@@ -66,6 +66,11 @@ public class StoreService {
             throw new StoreException(HttpStatus.CONFLICT, "ITEM_UNAVAILABLE",
                 "Esse item ainda não está disponível.");
         }
+    }
+
+    private void requireForSale(Product item) {
+        requireEnabled(item);
+        if (!item.saleEnabled()) throw new StoreException(HttpStatus.CONFLICT, "ITEM_UNAVAILABLE", "Este item está temporariamente fora de venda.");
     }
 
     private boolean owns(long playerId, String itemId) {
@@ -98,7 +103,7 @@ public class StoreService {
         for(String id:components) {
             Product component=product(id);
             if(component.category().equals("BUNDLE")) throw new StoreException(HttpStatus.CONFLICT,"ITEM_UNAVAILABLE","Coleção inválida.");
-            requireEnabled(component);
+            requireForSale(component);
         }
         return components;
     }
@@ -153,6 +158,10 @@ public class StoreService {
         int premiumCredits = ((Number) wallet.get("premium_credits")).intValue();
         List<StoreDTO.Item> items = jdbc.query("""
             SELECT i.id, i.category, i.name, i.description, i.price, i.enabled, i.premium_only,
+                   (i.enabled AND i.sale_enabled AND (i.category <> 'BUNDLE' OR (
+                       EXISTS (SELECT 1 FROM store_bundle_components bc WHERE bc.bundle_id=i.id)
+                       AND NOT EXISTS (SELECT 1 FROM store_bundle_components bc JOIN store_items child ON child.id=bc.item_id
+                           WHERE bc.bundle_id=i.id AND (NOT child.enabled OR NOT child.sale_enabled))))) AS sale_enabled,
                    (pi.item_id IS NOT NULL) AS owned,
                    (pe.item_id IS NOT NULL) AS equipped
             FROM store_items i
@@ -163,7 +172,7 @@ public class StoreService {
             """, (rs, row) -> new StoreDTO.Item(
                 rs.getString("id"), rs.getString("category"), rs.getString("name"),
                 rs.getString("description"), rs.getInt("price"), rs.getBoolean("enabled"),
-                rs.getBoolean("owned"), rs.getBoolean("equipped"), rs.getBoolean("premium_only")?rs.getInt("price"):premiumPrice(rs.getInt("price")), rs.getString("category").equals("BUNDLE")?bundleComponents(rs.getString("id")):List.of(),rs.getBoolean("premium_only")), playerId, playerId);
+                rs.getBoolean("owned"), rs.getBoolean("equipped"), rs.getBoolean("premium_only")?rs.getInt("price"):premiumPrice(rs.getInt("price")), rs.getString("category").equals("BUNDLE")?bundleComponents(rs.getString("id")):List.of(),rs.getBoolean("premium_only"),rs.getBoolean("sale_enabled")), playerId, playerId);
         return new StoreDTO(credits, premiumCredits, items, demoPremiumEnabled);
     }
 
@@ -181,11 +190,14 @@ public class StoreService {
     @Transactional
     public StoreDTO purchase(long playerId, String itemId, boolean premium) {
         if (premium) requireDemoPremium();
+        // Serialize catalog changes against purchases, including bundles. Shared
+        // lock permits unrelated purchases; admin and startup use exclusive lock.
+        jdbc.execute("SELECT pg_advisory_xact_lock_shared(702211261)");
         provision(playerId);
         // Serializes simultaneous purchases across HTTP requests/instances.
         int credits = lockedCredits(playerId);
         Product item = product(itemId);
-        requireEnabled(item);
+        requireForSale(item);
         if (owns(playerId, itemId)) {
             throw new StoreException(HttpStatus.CONFLICT, "ALREADY_OWNED",
                 "Este item já está no seu inventário.");

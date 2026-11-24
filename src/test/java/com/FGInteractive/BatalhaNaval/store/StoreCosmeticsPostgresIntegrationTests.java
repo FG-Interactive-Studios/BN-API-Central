@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class StoreCosmeticsPostgresIntegrationTests {
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired com.FGInteractive.BatalhaNaval.store.service.StoreCatalogBootstrapService bootstrap;
 
     private record Player(long id, String token) {}
 
@@ -56,6 +57,46 @@ class StoreCosmeticsPostgresIntegrationTests {
         return mvc.perform(put("/api/store/equip/{id}",item)
             .header("Authorization","Bearer "+p.token()))
             .andExpect(status().is(expected)).andReturn().getResponse().getContentAsString();
+    }
+
+    private void availability(Player p,String id,boolean enabled,int statusCode) throws Exception {
+        mvc.perform(put("/api/admin/store/items/{id}/availability",id)
+            .header("Authorization","Bearer "+p.token()).contentType(MediaType.APPLICATION_JSON)
+            .content("{\"enabled\":"+enabled+"}")).andExpect(status().is(statusCode));
+    }
+
+    @Test
+    void adminSaleSwitchPreservesOwnershipAndSurvivesCatalogSync() throws Exception {
+        Player admin=player(),owner=player(),buyer=player();
+        mvc.perform(get("/api/admin/store/items")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/admin/store/items").header("Authorization","Bearer "+buyer.token()))
+            .andExpect(status().isForbidden());
+        availability(buyer,"sound_pirate",false,403);
+        jdbc.update("UPDATE users SET is_admin=TRUE WHERE id=?",admin.id());
+        mvc.perform(get("/api/admin/store/items").header("Authorization","Bearer "+admin.token()))
+            .andExpect(status().isOk()).andExpect(jsonPath("$[?(@.id == 'sound_pirate')]").isNotEmpty());
+        availability(admin,"unknown_item",false,404);
+        availability(admin,"sound_default",false,409);
+        availability(admin,"sound_deep",true,409);
+        purchase(owner,"sound_pirate",200);
+        try {
+            availability(admin,"sound_pirate",false,200);
+            bootstrap.synchronize();
+            assertEquals(false,jdbc.queryForObject("SELECT sale_enabled FROM store_items WHERE id='sound_pirate'",Boolean.class));
+            assertEquals(admin.id(),jdbc.queryForObject("SELECT sale_updated_by FROM store_items WHERE id='sound_pirate'",Long.class).longValue());
+            assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(buyer,"sound_pirate",409),"$.code"));
+            assertEquals(300,((Number)JsonPath.read(store(buyer),"$.credits")).intValue());
+            assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM player_items WHERE user_id=? AND item_id='sound_pirate'",Integer.class,owner.id()));
+            equip(owner,"sound_pirate",200);
+            availability(admin,"skin_abyss",false,200);
+            assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(buyer,"bundle_chaos",409),"$.code"));
+        } finally {
+            availability(admin,"skin_abyss",true,200);
+            availability(admin,"sound_pirate",true,200);
+        }
+        purchase(buyer,"sound_pirate",200);
+        jdbc.update("UPDATE users SET is_admin=FALSE WHERE id=?",admin.id());
+        availability(admin,"sound_pirate",false,403);
     }
 
     @Test
