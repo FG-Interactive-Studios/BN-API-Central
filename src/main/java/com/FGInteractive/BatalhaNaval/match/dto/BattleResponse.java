@@ -30,5 +30,6 @@ public record BattleResponse(
     boolean paused,
     int yourConsecutiveMissedTurns,
     int yourAbilityPointsEarned,
-    List<Cell> yourAbilityPointCells
+    List<Cell> yourAbilityPointCells,
+    boolean yourDesperationUsed
 ) {}
