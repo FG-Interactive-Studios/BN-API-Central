@@ -113,6 +113,40 @@ class BattleEnginePostgresIntegrationTests {
             .header("Authorization","Bearer "+p.jwt)).andExpect(status().isNoContent());
     }
 
+    @Test void desperationEndpointRequiresAuthAndTurnAndCannotBeRepeated() throws Exception {
+        mvc.perform(post("/api/matches/me/shots/desperation"))
+            .andExpect(status().isUnauthorized());
+        Player host=player(),guest=player(),outsider=player();
+        try {
+            mvc.perform(post("/api/matches/me/shots/desperation")
+                .header("Authorization","Bearer "+outsider.jwt))
+                .andExpect(status().isNotFound());
+            setup(host,guest);
+            mvc.perform(post("/api/matches/me/shots/desperation")
+                .header("Authorization","Bearer "+host.jwt))
+                .andExpect(status().isConflict());
+            confirm(host);
+            confirm(guest);
+            assertEquals(false,JsonPath.read(view(host),"$.yourDesperationUsed"));
+            assertEquals(false,JsonPath.read(view(guest),"$.yourDesperationUsed"));
+            mvc.perform(post("/api/matches/me/shots/desperation")
+                .header("Authorization","Bearer "+guest.jwt))
+                .andExpect(status().isConflict());
+            String after=mvc.perform(post("/api/matches/me/shots/desperation")
+                .header("Authorization","Bearer "+host.jwt))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertEquals(true,JsonPath.read(after,"$.yourDesperationUsed"));
+            assertEquals(1,((Number)JsonPath.read(after,"$.shotsFired.length()")).intValue());
+            assertEquals(1,((Number)JsonPath.read(view(guest),"$.shotsReceived.length()")).intValue());
+            assertEquals(false,JsonPath.read(view(guest),"$.yourDesperationUsed"),
+                "One player cannot spend the other's random shot");
+            mvc.perform(post("/api/matches/me/shots/desperation")
+                .header("Authorization","Bearer "+host.jwt))
+                .andExpect(status().isConflict());
+            assertEquals(1,((Number)JsonPath.read(view(host),"$.shotsFired.length()")).intValue());
+        } finally {leave(host);leave(guest);leave(outsider);}
+    }
+
     @Test void battleOnlyStartsAfterBothConfirmedAndAuthRequiredForEveryAction() throws Exception {
         mvc.perform(get("/api/matches/me")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/matches/me/shots").contentType(MediaType.APPLICATION_JSON)
