@@ -26,7 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class StoreCatalogBootstrapService {
     private static final Logger log = LoggerFactory.getLogger(StoreCatalogBootstrapService.class);
     private static final Pattern ID = Pattern.compile("[a-z][a-z0-9_]{1,39}");
-    private static final Set<String> CATEGORIES = Set.of("SKIN","SOUND","CAPTAIN","BUNDLE","TAUNT");
+    private static final Set<String> CATEGORIES = Set.of("SKIN","SOUND","CAPTAIN","BUNDLE","TAUNT","ATTACK","CELEBRATION","FUNERAL","TITLE","COMMENTATOR","FRAME","BOARD_THEME");
     private static final Set<String> STATUSES = Set.of("DRAFT","RELEASED");
     private final JdbcTemplate jdbc;
     private final JsonMapper mapper;
@@ -38,7 +38,7 @@ public class StoreCatalogBootstrapService {
 
     record CatalogItem(String id, String category, String name, String description,
                        int price, int order, int revision, boolean enabled,
-                       boolean draft, List<String> components) {}
+                       boolean draft, List<String> components, boolean premiumOnly) {}
 
     private static JsonNode require(JsonNode parent, String key) {
         JsonNode value = parent.get(key);
@@ -108,9 +108,8 @@ public class StoreCatalogBootstrapService {
             boolean draft=status.equals("DRAFT");
             if (!draft && (!assets || !pricing || !approved))
                 throw new IllegalStateException("Cannot release unapproved product: "+id);
-            // Captain entitlement and bundle fulfillment are not implemented.
-            if (!draft && (category.equals("CAPTAIN") || category.equals("BUNDLE")))
-                throw new IllegalStateException("Unsupported category released: "+id);
+            boolean premiumOnly=entry.get("premiumOnly")!=null && flag(entry,"premiumOnly");
+            if (premiumOnly && price==0) throw new IllegalStateException("Premium-only item must have a positive price: "+id);
             JsonNode components=require(entry,"components");
             if(!components.isArray())throw new IllegalStateException("Invalid bundle components: "+id);
             List<String> links=new ArrayList<>();
@@ -125,13 +124,13 @@ public class StoreCatalogBootstrapService {
                 throw new IllegalStateException("Only bundles must define components: "+id);
             result.add(new CatalogItem(id,category,string(entry,"name",80),
                 string(entry,"description",255),price,order,revision,
-                !draft, draft,List.copyOf(links)));
+                !draft, draft,List.copyOf(links),premiumOnly));
         }
         Map<String,CatalogItem> byId=new HashMap<>();
         result.forEach(item->byId.put(item.id(),item));
         for(CatalogItem item:result)for(String target:item.components()) {
             CatalogItem referenced=byId.get(target);
-            if(referenced==null || referenced.category().equals("BUNDLE"))
+            if(referenced==null || referenced.category().equals("BUNDLE") || (item.enabled() && !referenced.enabled()))
                 throw new IllegalStateException("Bundle references missing or nested item: "+target);
         }
         return List.copyOf(result);
@@ -149,11 +148,11 @@ public class StoreCatalogBootstrapService {
         int created=0, updated=0;
         for(CatalogItem item:catalog) {
             int inserted=jdbc.update("""
-                INSERT INTO store_items (id,category,name,description,price,enabled,display_order)
-                VALUES (?,?,?,?,?,?,?)
+                INSERT INTO store_items (id,category,name,description,price,enabled,display_order,premium_only)
+                VALUES (?,?,?,?,?,?,?,?)
                 ON CONFLICT (id) DO NOTHING
                 """,item.id(),item.category(),item.name(),item.description(),
-                item.price(),item.enabled(),item.order());
+                item.price(),item.enabled(),item.order(),item.premiumOnly());
             created+=inserted;
             String existingCategory=jdbc.queryForObject(
                 "SELECT category FROM store_items WHERE id=?",String.class,item.id());
@@ -170,10 +169,10 @@ public class StoreCatalogBootstrapService {
                 """,Integer.class,item.id());
             if(revision<item.revision()) {
                 jdbc.update("""
-                    UPDATE store_items SET name=?,description=?,price=?,enabled=?,display_order=?
+                    UPDATE store_items SET name=?,description=?,price=?,enabled=?,display_order=?,premium_only=?
                     WHERE id=?
                     """,item.name(),item.description(),item.price(),
-                    item.enabled(),item.order(),item.id());
+                    item.enabled(),item.order(),item.premiumOnly(),item.id());
                 jdbc.update("""
                     UPDATE store_catalog_managed SET applied_revision=? WHERE item_id=?
                     """,item.revision(),item.id());
