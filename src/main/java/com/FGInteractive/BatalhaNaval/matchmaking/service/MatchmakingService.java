@@ -57,12 +57,14 @@ public class MatchmakingService {
     private final RealtimeWebSocketHandler realtime;
     private final MatchPreparationStore preparations;
     private final GameModeAvailabilityService modes;
+    private final com.FGInteractive.BatalhaNaval.user.service.PlayerMatchHistoryService history;
     private final Duration disconnectGrace;
     private final boolean gddEnforced;
 
     public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime,
                               com.FGInteractive.BatalhaNaval.store.service.StoreService store,
                               MatchPreparationStore preparations, GameModeAvailabilityService modes,
+                              com.FGInteractive.BatalhaNaval.user.service.PlayerMatchHistoryService history,
                               @Value("${match.disconnect-grace-seconds:15}") long graceSeconds,
                               @Value("${match.gdd-enforced:true}") boolean gddEnforced) {
         if (graceSeconds < 1 || graceSeconds > 3600)
@@ -72,6 +74,7 @@ public class MatchmakingService {
         this.realtime = realtime;
         this.preparations = preparations;
         this.modes = modes;
+        this.history = history;
         this.disconnectGrace = Duration.ofSeconds(graceSeconds);
         this.gddEnforced = gddEnforced;
     }
@@ -380,8 +383,8 @@ public class MatchmakingService {
             }
             if (room.phase() == LobbyRoom.Phase.PLAYING) {
                 BattleRound battle = preparations.battle(code);
-                battle.forfeit(userId);
-                room.finishBattle();
+                if(!battle.finished())battle.forfeit(userId);
+                completeBattleLocked(room,battle);
                 surrendered = true;
                 // Do not remove user membership: both can inspect final outcome.
             } else if (room.phase() == LobbyRoom.Phase.FINISHED) {
@@ -449,8 +452,8 @@ public class MatchmakingService {
                 Instant now = Instant.now();
                 // An overdue reconnect cannot erase an already expired
                 // deadline merely because the watchdog has not run yet.
-                if (battle.resolveDisconnects(now)) {
-                    room.finishBattle();
+                if (battle.finished() || battle.resolveDisconnects(now)) {
+                    completeBattleLocked(room,battle);
                     battleStateChanged = true;
                 } else {
                     battleStateChanged = battle.setPlayerConnected(
@@ -491,11 +494,11 @@ public class MatchmakingService {
                     }
                 } else if(room.phase()==LobbyRoom.Phase.PLAYING) {
                     BattleRound battle=preparations.battle(room.code());
-                    boolean changed=battle.resolveDisconnects(now);
+                    boolean changed=battle.finished() || battle.resolveDisconnects(now);
                     if(!changed)changed=battle.resolveTimed(now);
                     if(changed) {
                         if(battle.finished()) {
-                            room.finishBattle();
+                            completeBattleLocked(room,battle);
                             finished.add(room);
                         }
                         battleChanges.add(room);
@@ -512,6 +515,14 @@ public class MatchmakingService {
             if(finished.contains(room))broadcast(room);
             publishBattle(room,null);
         }
+    }
+
+    /** All terminal paths converge here under the lobby mutex. Persist both players
+     * before publishing FINISHED. If persistence fails, the next sweep retries. */
+    public void completeBattleLocked(LobbyRoom room,BattleRound battle) {
+        if(!battle.finished())throw new IllegalStateException("Battle is not finished");
+        history.record(room.hostId(),room.guestId(),battle.view(room.hostId()),battle.view(room.guestId()));
+        room.finishBattle();
     }
 
     /** Must be called under the shared lobby mutex. */
@@ -562,8 +573,9 @@ public class MatchmakingService {
         synchronized (mutex) {
             for (LobbyRoom room : rooms.values()) {
                 if (room.phase() != LobbyRoom.Phase.PLAYING) continue;
-                if (preparations.battle(room.code()).resolveDisconnects(now)) {
-                    room.finishBattle();
+                BattleRound battle=preparations.battle(room.code());
+                if (battle.finished() || battle.resolveDisconnects(now)) {
+                    completeBattleLocked(room,battle);
                     resolved.add(room);
                 }
             }

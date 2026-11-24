@@ -113,6 +113,40 @@ class BattleEnginePostgresIntegrationTests {
             .header("Authorization","Bearer "+p.jwt)).andExpect(status().isNoContent());
     }
 
+    @Test void recentHistoryIsBoundedAndCountersSurviveRetriesAndPruning() throws Exception {
+        mvc.perform(get("/api/users/me/statistics")).andExpect(status().isUnauthorized());
+        Player host=player(),guest=player();
+        mvc.perform(get("/api/users/me/statistics").header("Authorization","Bearer "+host.jwt))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalMatches").value(0))
+            .andExpect(jsonPath("$.recentMatches.length()").value(0));
+        String newest=null;
+        for(int i=0;i<12;i++){
+            try {
+                setup(host,guest);confirm(host);confirm(guest);
+                Player loser=i==10?host:guest;
+                String finalView=mvc.perform(post("/api/matches/me/forfeit").header("Authorization","Bearer "+loser.jwt))
+                    .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                newest=JsonPath.read(finalView,"$.matchId");
+                mvc.perform(post("/api/matches/me/forfeit").header("Authorization","Bearer "+loser.jwt))
+                    .andExpect(status().isOk());
+                view(host);view(guest);
+            } finally {leave(host);leave(guest);}
+        }
+        mvc.perform(get("/api/users/me/statistics").header("Authorization","Bearer "+host.jwt))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalMatches").value(12))
+            .andExpect(jsonPath("$.wins").value(11)).andExpect(jsonPath("$.losses").value(1))
+            .andExpect(jsonPath("$.currentWinStreak").value(1)).andExpect(jsonPath("$.bestWinStreak").value(10))
+            .andExpect(jsonPath("$.recentMatches.length()").value(10))
+            .andExpect(jsonPath("$.recentMatches[0].matchId").value(newest))
+            .andExpect(jsonPath("$.recentMatches[0].result").value("WIN"))
+            .andExpect(jsonPath("$.recentMatches[1].result").value("LOSS"));
+        mvc.perform(get("/api/users/me/statistics").header("Authorization","Bearer "+guest.jwt))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.totalMatches").value(12))
+            .andExpect(jsonPath("$.wins").value(1)).andExpect(jsonPath("$.losses").value(11))
+            .andExpect(jsonPath("$.recentMatches.length()").value(10))
+            .andExpect(jsonPath("$.recentMatches[0].result").value("LOSS"));
+    }
+
     @Test void desperationEndpointRequiresAuthAndTurnAndCannotBeRepeated() throws Exception {
         mvc.perform(post("/api/matches/me/shots/desperation"))
             .andExpect(status().isUnauthorized());

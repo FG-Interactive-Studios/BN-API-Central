@@ -10,8 +10,14 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/users")
 public class UserController {
     private final UserService users;
+    private final com.FGInteractive.BatalhaNaval.user.service.PlayerMatchHistoryService history;
 
-    public UserController(UserService users) { this.users = users; }
+    public UserController(UserService users, com.FGInteractive.BatalhaNaval.user.service.PlayerMatchHistoryService history) { this.users = users; this.history=history; }
+
+    @GetMapping("/me/statistics")
+    public com.FGInteractive.BatalhaNaval.user.service.PlayerMatchHistoryService.ProfileStatistics statistics(@AuthenticationPrincipal Jwt jwt) {
+        return history.statistics(Long.parseLong(jwt.getSubject()));
+    }
 
     @GetMapping("/me")
     public PlayerProfile me(@AuthenticationPrincipal Jwt jwt) {

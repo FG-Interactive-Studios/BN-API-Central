@@ -47,7 +47,7 @@ public class BattleService {
             } catch (IllegalStateException ex) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
             }
-            if (battle.finished()) room.finishBattle();
+            if (battle.finished()) matchmaking.completeBattleLocked(room,battle);
             return new BattleChanges(room.hostId(), room.guestId(),
                 battle.view(userId), battle.view(room.hostId()), battle.view(room.guestId()),
                 battle.finished());
@@ -74,7 +74,7 @@ public class BattleService {
             } catch (IllegalStateException ex) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
             }
-            if(battle.finished())room.finishBattle();
+            if(battle.finished())matchmaking.completeBattleLocked(room,battle);
             return new BattleChanges(room.hostId(),room.guestId(),
                 battle.view(userId),battle.view(room.hostId()),battle.view(room.guestId()),
                 battle.finished());
@@ -100,7 +100,7 @@ public class BattleService {
             } catch (IllegalStateException ex) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
             }
-            if (battle.finished()) room.finishBattle();
+            if (battle.finished()) matchmaking.completeBattleLocked(room,battle);
             return new BattleChanges(room.hostId(), room.guestId(),
                 battle.view(userId), battle.view(room.hostId()), battle.view(room.guestId()),
                 battle.finished());
@@ -122,7 +122,7 @@ public class BattleService {
             } catch (IllegalStateException ex) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, ex.getMessage());
             }
-            if (changed) room.finishBattle();
+            if (changed) matchmaking.completeBattleLocked(room,battle);
             return new BattleChanges(room.hostId(), room.guestId(),
                 battle.view(userId), battle.view(room.hostId()),
                 battle.view(room.guestId()), changed);
