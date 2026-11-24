@@ -62,7 +62,7 @@ public class StoreService {
     private void requireEnabled(Product item) {
         // CAPTAIN needs profile ownership checks; BUNDLE needs atomic delivery
         // of components. Neither can be sold/equipped until implemented.
-        if (!item.enabled() || !List.of("SKIN","SOUND").contains(item.category())) {
+        if (!item.enabled() || !List.of("SKIN","SOUND","TAUNT").contains(item.category())) {
             throw new StoreException(HttpStatus.CONFLICT, "ITEM_UNAVAILABLE",
                 "Esse item ainda não está disponível.");
         }
