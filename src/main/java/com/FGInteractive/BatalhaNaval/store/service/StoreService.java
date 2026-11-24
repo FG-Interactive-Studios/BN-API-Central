@@ -123,6 +123,26 @@ public class StoreService {
         return snapshot(playerId);
     }
 
+    /** Fake coins only: one server-derived reward per finished match and user. */
+    public record RewardReceipt(int earned, StoreDTO wallet) {}
+
+    @Transactional
+    public RewardReceipt claimVirtualMatchReward(long playerId, java.util.UUID matchId,
+                                                  Long winnerId) {
+        if(matchId==null) throw new StoreException(HttpStatus.CONFLICT,
+            "MATCH_NOT_FINISHED","A partida ainda não terminou.");
+        provision(playerId);
+        lockedCredits(playerId);
+        int amount=winnerId==null?30:(winnerId.longValue()==playerId?60:25);
+        int granted=jdbc.update("""
+            INSERT INTO virtual_match_rewards (user_id,match_id,credits)
+            VALUES (?,?,?) ON CONFLICT (user_id,match_id) DO NOTHING
+            """,playerId,matchId,amount);
+        if(granted>0)jdbc.update(
+            "UPDATE player_wallets SET credits=credits+? WHERE user_id=?",amount,playerId);
+        return new RewardReceipt(granted>0?amount:0,snapshot(playerId));
+    }
+
     @Transactional
     public StoreDTO equip(long playerId, String itemId) {
         provision(playerId);
