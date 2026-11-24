@@ -14,6 +14,9 @@ contém apenas *placeholders*, não senhas nem chaves válidas.
 | `DB_USER` | Sim | Usuário PostgreSQL dedicado, de privilégio mínimo compatível com Flyway |
 | `DB_PASSWORD` | Sim | Senha da conta de banco |
 | `AUTH_JWT_SECRET_B64` | **Sim** | Chave secreta Base64 persistente, decodificando em pelo menos 32 bytes aleatórios |
+| `REALTIME_ALLOWED_ORIGINS` | Sim, se o frontend usar outra origem | Lista de origens HTTPS exatas, separadas por vírgula, autorizadas para REST e WebSocket; vazia mantém acesso de mesma origem. |
+
+Exemplo para Firebase Hosting: `REALTIME_ALLOWED_ORIGINS=https://naviiwar.web.app,https://naviiwar.firebaseapp.com`. Não inclua caminhos, barra final ou curingas. O CORS REST autoriza apenas os métodos e cabeçalhos usados pela API, sem liberar credenciais cross-origin; o JWT Bearer continua obrigatório nos endpoints protegidos.
 
 A configuração atual de `application.yaml` lê exatamente essas variáveis.
 Existem valores padrão de banco apenas para desenvolvimento: **não** confie
