@@ -127,23 +127,25 @@ class BattleEnginePostgresIntegrationTests {
                 .andExpect(status().isConflict());
             confirm(host);
             confirm(guest);
-            assertEquals(false,JsonPath.read(view(host),"$.yourDesperationUsed"));
-            assertEquals(false,JsonPath.read(view(guest),"$.yourDesperationUsed"));
+            Player first=((Number)JsonPath.read(view(host),"$.turnPlayerId")).longValue()==host.id?host:guest;
+            Player second=first==host?guest:host;
+            assertEquals(false,JsonPath.read(view(first),"$.yourDesperationUsed"));
+            assertEquals(false,JsonPath.read(view(second),"$.yourDesperationUsed"));
             mvc.perform(post("/api/matches/me/shots/desperation")
-                .header("Authorization","Bearer "+guest.jwt))
+                .header("Authorization","Bearer "+second.jwt))
                 .andExpect(status().isConflict());
             String after=mvc.perform(post("/api/matches/me/shots/desperation")
-                .header("Authorization","Bearer "+host.jwt))
+                .header("Authorization","Bearer "+first.jwt))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
             assertEquals(true,JsonPath.read(after,"$.yourDesperationUsed"));
             assertEquals(1,((Number)JsonPath.read(after,"$.shotsFired.length()")).intValue());
-            assertEquals(1,((Number)JsonPath.read(view(guest),"$.shotsReceived.length()")).intValue());
-            assertEquals(false,JsonPath.read(view(guest),"$.yourDesperationUsed"),
+            assertEquals(1,((Number)JsonPath.read(view(second),"$.shotsReceived.length()")).intValue());
+            assertEquals(false,JsonPath.read(view(second),"$.yourDesperationUsed"),
                 "One player cannot spend the other's random shot");
             mvc.perform(post("/api/matches/me/shots/desperation")
-                .header("Authorization","Bearer "+host.jwt))
+                .header("Authorization","Bearer "+first.jwt))
                 .andExpect(status().isConflict());
-            assertEquals(1,((Number)JsonPath.read(view(host),"$.shotsFired.length()")).intValue());
+            assertEquals(1,((Number)JsonPath.read(view(first),"$.shotsFired.length()")).intValue());
         } finally {leave(host);leave(guest);leave(outsider);}
     }
 

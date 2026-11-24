@@ -113,6 +113,8 @@ class RematchPostgresIntegrationTests {
                 .andExpect(status().isBadRequest());
             String first=vote(host,true);
             assertEquals("FINISHED",JsonPath.read(first,"$.status"));
+            assertEquals(1,((Number)JsonPath.read(first,"$.rivalry.hostWins")).intValue());
+            assertEquals(0,((Number)JsonPath.read(first,"$.rivalry.guestWins")).intValue());
             assertEquals(true,JsonPath.read(first,"$.rematch.hostAccepted"));
             assertEquals(false,JsonPath.read(first,"$.rematch.guestAccepted"));
             assertEquals(true,JsonPath.read(first,"$.rematch.available"));
@@ -125,6 +127,7 @@ class RematchPostgresIntegrationTests {
             vote(host,true);
             String newRoom=vote(guest,true);
             assertEquals("PREPARING",JsonPath.read(newRoom,"$.status"));
+            assertEquals(1,((Number)JsonPath.read(newRoom,"$.rivalry.hostWins")).intValue());
             assertEquals(false,JsonPath.read(newRoom,"$.publicMatch"));
             assertEquals("classic",JsonPath.read(newRoom,"$.mode.id"));
             assertNotEquals(oldCode,(String)JsonPath.read(newRoom,"$.code"));
@@ -147,6 +150,11 @@ class RematchPostgresIntegrationTests {
                     .header("Authorization","Bearer "+player.jwt)).andExpect(status().isOk());
             }
             assertNotEquals(oldMatch,(String)JsonPath.read(response(host,"/api/matches/me"),"$.matchId"));
+            mvc.perform(post("/api/matches/me/forfeit").header("Authorization","Bearer "+host.jwt))
+                .andExpect(status().isOk());
+            String score=response(guest,"/api/matchmaking/lobbies/me");
+            assertEquals(1,((Number)JsonPath.read(score,"$.rivalry.hostWins")).intValue());
+            assertEquals(1,((Number)JsonPath.read(score,"$.rivalry.guestWins")).intValue());
             mvc.perform(get("/api/matchmaking/state").header("Authorization","Bearer "+guest.jwt))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("MATCHED"));
         } finally {leave(host);leave(guest);leave(outsider);}

@@ -37,3 +37,7 @@ match:
   disconnect-sweep-ms: ${MATCH_DISCONNECT_SWEEP_MS:5000}
   game-sweep-ms: ${MATCH_GAME_SWEEP_MS:500}
   gdd-enforced: ${MATCH_GDD_ENFORCED:true}
+
+# Exclusively virtual demo credits. No payment service or cash value.
+store:
+  demo-premium-enabled: ${STORE_DEMO_PREMIUM_ENABLED:true}
