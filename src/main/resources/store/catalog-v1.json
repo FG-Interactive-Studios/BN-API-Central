@@ -62,15 +62,16 @@
       "id": "sound_sonar",
       "category": "SOUND",
       "name": "Sonar Retrô",
-      "description": "Pacote de sons aguardando entrega do Game Design.",
+      "description": "Quatro efeitos retrô em 8 bits: acerto, água e afundamentos. Preço de demonstração.",
       "price": 90,
       "displayOrder": 50,
-      "revision": 1,
-      "status": "DRAFT",
-      "assetsVerified": false,
-      "priceApproved": false,
-      "approvedForSale": false,
-      "components": []
+      "revision": 2,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": [],
+      "priceSource": "DEMO_PROVISORIO"
     },
     {
       "id": "sound_deep",

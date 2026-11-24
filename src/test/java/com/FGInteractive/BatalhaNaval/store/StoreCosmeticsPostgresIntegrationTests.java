@@ -147,7 +147,7 @@ class StoreCosmeticsPostgresIntegrationTests {
         assertEquals(0, ((Number) JsonPath.read(first,"$.premiumCredits")).intValue());
         assertEquals(true,JsonPath.read(first,"$.items[?(@.id == 'skin_default')].owned").toString().contains("true"));
         assertEquals(true,JsonPath.read(first,"$.items[?(@.id == 'sound_default')].equipped").toString().contains("true"));
-        assertEquals(false,JsonPath.read(first,"$.items[?(@.id == 'sound_sonar')].enabled").toString().contains("true"));
+        assertEquals(true,JsonPath.read(first,"$.items[?(@.id == 'sound_sonar')].enabled").toString().contains("true"));
         purchase(p,"skin_coral",200);
         store(p);
         assertEquals(210, ((Number)jdbc.queryForObject(
@@ -178,7 +178,7 @@ class StoreCosmeticsPostgresIntegrationTests {
     @Test
     void disabledAndUnknownItemsCannotBePurchasedOrEquipped() throws Exception {
         Player p=player();
-        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"sound_sonar",409),"$.code"));
+        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"sound_deep",409),"$.code"));
         assertEquals("PREMIUM_REQUIRED",JsonPath.read(purchase(p,"skin_corsair",409),"$.code"));
         assertEquals("PREMIUM_REQUIRED",JsonPath.read(purchase(p,"captain_corsair",409),"$.code"));
         assertEquals("PREMIUM_REQUIRED",JsonPath.read(purchase(p,"bundle_corsair",409),"$.code"));
