@@ -88,7 +88,7 @@ class VirtualEconomyAndTauntsPostgresIntegrationTests {
                 .header("Authorization","Bearer "+a.token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("ALREADY_OWNED"));
-            mvc.perform(post("/api/store/equip/taunt_panic")
+            mvc.perform(put("/api/store/equip/taunt_panic")
                 .header("Authorization","Bearer "+b.token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("NOT_OWNED"));
