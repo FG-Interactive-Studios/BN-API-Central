@@ -108,8 +108,8 @@ public class StoreCatalogBootstrapService {
             boolean draft=status.equals("DRAFT");
             if (!draft && (!assets || !pricing || !approved))
                 throw new IllegalStateException("Cannot release unapproved product: "+id);
-            // Captain entitlement and bundle fulfillment are not implemented.
-            if (!draft && (category.equals("CAPTAIN") || category.equals("BUNDLE")))
+            // Captain presentation and entitlement remain pending.
+            if (!draft && category.equals("CAPTAIN"))
                 throw new IllegalStateException("Unsupported category released: "+id);
             JsonNode components=require(entry,"components");
             if(!components.isArray())throw new IllegalStateException("Invalid bundle components: "+id);
@@ -131,7 +131,7 @@ public class StoreCatalogBootstrapService {
         result.forEach(item->byId.put(item.id(),item));
         for(CatalogItem item:result)for(String target:item.components()) {
             CatalogItem referenced=byId.get(target);
-            if(referenced==null || referenced.category().equals("BUNDLE"))
+            if(referenced==null || referenced.category().equals("BUNDLE") || (item.enabled() && !referenced.enabled()))
                 throw new IllegalStateException("Bundle references missing or nested item: "+target);
         }
         return List.copyOf(result);

@@ -287,6 +287,24 @@
       "priceApproved": true,
       "approvedForSale": true,
       "components": []
+    },
+    {
+      "id": "bundle_chaos",
+      "category": "BUNDLE",
+      "name": "Almirante do Caos",
+      "description": "Frota Abissal, Atendimento Naval e Almirante dos Memes. Três itens, um pacote.",
+      "price": 330,
+      "displayOrder": 210,
+      "revision": 1,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": [
+        "skin_abyss",
+        "taunt_support",
+        "taunt_meme"
+      ]
     }
   ]
 }

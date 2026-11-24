@@ -31,12 +31,12 @@ public class StoreService {
             """, playerId);
         jdbc.update("""
             INSERT INTO player_items (user_id, item_id)
-            SELECT ?, id FROM store_items WHERE enabled = TRUE AND price = 0
+            SELECT ?, id FROM store_items WHERE enabled = TRUE AND price = 0 AND category <> 'BUNDLE'
             ON CONFLICT DO NOTHING
             """, playerId);
         jdbc.update("""
             INSERT INTO player_equipment (user_id, category, item_id)
-            SELECT ?, category, id FROM store_items WHERE enabled = TRUE AND price = 0
+            SELECT ?, category, id FROM store_items WHERE enabled = TRUE AND price = 0 AND category <> 'BUNDLE'
             ON CONFLICT (user_id, category) DO NOTHING
             """, playerId);
     }
@@ -62,9 +62,8 @@ public class StoreService {
     }
 
     private void requireEnabled(Product item) {
-        // CAPTAIN needs profile ownership checks; BUNDLE needs atomic delivery
-        // of components. Neither can be sold/equipped until implemented.
-        if (!item.enabled() || !List.of("SKIN","SOUND","TAUNT").contains(item.category())) {
+        // CAPTAIN still requires its own presentation/entitlement integration.
+        if (!item.enabled() || !List.of("SKIN","SOUND","TAUNT","BUNDLE").contains(item.category())) {
             throw new StoreException(HttpStatus.CONFLICT, "ITEM_UNAVAILABLE",
                 "Esse item ainda não está disponível.");
         }
@@ -74,6 +73,23 @@ public class StoreService {
         return Boolean.TRUE.equals(jdbc.queryForObject("""
             SELECT EXISTS(SELECT 1 FROM player_items WHERE user_id = ? AND item_id = ?)
             """, Boolean.class, playerId, itemId));
+    }
+
+    private List<String> bundleComponents(String id) {
+        return jdbc.queryForList("SELECT item_id FROM store_bundle_components WHERE bundle_id=? ORDER BY item_id",
+            String.class,id);
+    }
+
+    private List<String> purchasableComponents(Product item) {
+        if (!item.category().equals("BUNDLE")) return List.of();
+        var components=bundleComponents(item.id());
+        if (components.isEmpty()) throw new StoreException(HttpStatus.CONFLICT,"ITEM_UNAVAILABLE","Coleção sem itens disponíveis.");
+        for(String id:components) {
+            Product component=product(id);
+            if(component.category().equals("BUNDLE")) throw new StoreException(HttpStatus.CONFLICT,"ITEM_UNAVAILABLE","Coleção inválida.");
+            requireEnabled(component);
+        }
+        return components;
     }
 
     private static int premiumPrice(int credits) {
@@ -136,7 +152,7 @@ public class StoreService {
             """, (rs, row) -> new StoreDTO.Item(
                 rs.getString("id"), rs.getString("category"), rs.getString("name"),
                 rs.getString("description"), rs.getInt("price"), rs.getBoolean("enabled"),
-                rs.getBoolean("owned"), rs.getBoolean("equipped"), premiumPrice(rs.getInt("price"))), playerId, playerId);
+                rs.getBoolean("owned"), rs.getBoolean("equipped"), premiumPrice(rs.getInt("price")), rs.getString("category").equals("BUNDLE")?bundleComponents(rs.getString("id")):List.of()), playerId, playerId);
         return new StoreDTO(credits, premiumCredits, items, demoPremiumEnabled);
     }
 
@@ -163,6 +179,9 @@ public class StoreService {
             throw new StoreException(HttpStatus.CONFLICT, "ALREADY_OWNED",
                 "Este item já está no seu inventário.");
         }
+        List<String> components=purchasableComponents(item);
+        if (!components.isEmpty() && components.stream().allMatch(id->owns(playerId,id)))
+            throw new StoreException(HttpStatus.CONFLICT,"ALREADY_OWNED","Você já possui todos os itens desta coleção.");
         int price = premium ? premiumPrice(item.price()) : item.price();
         int balance = premium ? jdbc.queryForObject(
             "SELECT premium_credits FROM player_wallets WHERE user_id=?", Integer.class, playerId) : credits;
@@ -175,6 +194,8 @@ public class StoreService {
             : "UPDATE player_wallets SET credits = credits - ? WHERE user_id = ?", price, playerId);
         jdbc.update("INSERT INTO player_items (user_id, item_id) VALUES (?, ?)",
             playerId, itemId);
+        for(String component:components) jdbc.update(
+            "INSERT INTO player_items(user_id,item_id) VALUES (?,?) ON CONFLICT DO NOTHING",playerId,component);
         return snapshot(playerId);
     }
 
@@ -205,6 +226,7 @@ public class StoreService {
         lockedCredits(playerId);
         Product item = product(itemId);
         requireEnabled(item);
+        if (item.category().equals("BUNDLE")) throw new StoreException(HttpStatus.CONFLICT,"ITEM_UNAVAILABLE","Equipe os itens da coleção individualmente.");
         if (!owns(playerId, itemId)) {
             throw new StoreException(HttpStatus.CONFLICT, "NOT_OWNED",
                 "Você precisa adquirir o item antes de equipá-lo.");

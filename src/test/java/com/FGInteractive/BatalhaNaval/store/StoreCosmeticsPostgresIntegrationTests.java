@@ -81,6 +81,24 @@ class StoreCosmeticsPostgresIntegrationTests {
     }
 
     @Test
+    void bundleGrantsAllComponentsOnceAndDoesNotEquipTheBundle() throws Exception {
+        Player p=player();
+        String body="{\"packId\":\"demo_300\",\"requestId\":\""+UUID.randomUUID()+"\"}";
+        mvc.perform(post("/api/store/demo-premium").header("Authorization","Bearer "+p.token())
+            .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk());
+        mvc.perform(post("/api/store/purchase/bundle_chaos").param("premium","true")
+            .header("Authorization","Bearer "+p.token())).andExpect(status().isOk())
+            .andExpect(jsonPath("$.premiumCredits").value(190));
+        for(String id:new String[]{"skin_abyss","taunt_support","taunt_meme","bundle_chaos"}) {
+            assertEquals(1,jdbc.queryForObject("SELECT COUNT(*) FROM player_items WHERE user_id=? AND item_id=?",
+                Integer.class,p.id(),id));
+        }
+        assertEquals("ITEM_UNAVAILABLE",JsonPath.read(equip(p,"bundle_chaos",409),"$.code"));
+        assertEquals("ALREADY_OWNED",JsonPath.read(purchase(p,"bundle_chaos",409),"$.code"));
+        assertEquals(190,((Number)JsonPath.read(store(p),"$.premiumCredits")).intValue());
+    }
+
+    @Test
     void anonymousCannotReadOrModifyStore() throws Exception {
         mvc.perform(get("/api/store")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/store/purchase/skin_coral")).andExpect(status().isUnauthorized());
