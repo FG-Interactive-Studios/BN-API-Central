@@ -23,6 +23,7 @@ public final class LobbyRoom {
     private boolean hostRematchAccepted;
     private boolean guestRematchAccepted;
     private boolean rematchDeclined;
+    private int priorHostWins, priorGuestWins, priorDraws;
     private Phase phase = Phase.WAITING;
     private long revision = 1;
 
@@ -51,6 +52,17 @@ public final class LobbyRoom {
     public boolean hostRematchAccepted() { return hostRematchAccepted; }
     public boolean guestRematchAccepted() { return guestRematchAccepted; }
     public boolean rematchDeclined() { return rematchDeclined; }
+    public int priorHostWins() { return priorHostWins; }
+    public int priorGuestWins() { return priorGuestWins; }
+    public int priorDraws() { return priorDraws; }
+    /** Called once on a new rematch room, under the membership mutex. */
+    public void inheritRivalry(int hostWins, int guestWins, int draws) {
+        if (phase != Phase.WAITING || !isFull())
+            throw new IllegalStateException("Rivalry can only initialize a new rematch room");
+        priorHostWins=hostWins;
+        priorGuestWins=guestWins;
+        priorDraws=draws;
+    }
     public boolean bothRematchAccepted() { return hostRematchAccepted && guestRematchAccepted; }
     public Phase phase() { return phase; }
     public long revision() { return revision; }
@@ -142,6 +154,7 @@ public final class LobbyRoom {
 
     /** A guest leaving reopens the same room and clears readiness. */
     public void guestLeaves() {
+        priorHostWins=0; priorGuestWins=0; priorDraws=0;
         guestId = null;
         guestReady = false;
         guestConnected = false;

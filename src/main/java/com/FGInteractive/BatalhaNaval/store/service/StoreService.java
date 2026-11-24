@@ -63,7 +63,7 @@ public class StoreService {
 
     private void requireEnabled(Product item) {
         // CAPTAIN still requires its own presentation/entitlement integration.
-        if (!item.enabled() || !List.of("SKIN","SOUND","TAUNT","BUNDLE").contains(item.category())) {
+        if (!item.enabled() || !List.of("SKIN","SOUND","TAUNT","BUNDLE","ATTACK","CELEBRATION","FUNERAL","TITLE","COMMENTATOR","FRAME","BOARD_THEME").contains(item.category())) {
             throw new StoreException(HttpStatus.CONFLICT, "ITEM_UNAVAILABLE",
                 "Esse item ainda não está disponível.");
         }
@@ -73,6 +73,18 @@ public class StoreService {
         return Boolean.TRUE.equals(jdbc.queryForObject("""
             SELECT EXISTS(SELECT 1 FROM player_items WHERE user_id = ? AND item_id = ?)
             """, Boolean.class, playerId, itemId));
+    }
+
+    /** Safe public presentation only: no wallet, ownership history or hidden fleet state. */
+    public java.util.Map<String,String> equippedPresentation(long playerId) {
+        var result=new java.util.HashMap<String,String>();
+        jdbc.query("""
+            SELECT i.category,i.id FROM player_equipment e
+            JOIN store_items i ON i.id=e.item_id AND i.category=e.category
+            WHERE e.user_id=? AND i.enabled=TRUE
+              AND i.category IN ('ATTACK','CELEBRATION','FUNERAL','TITLE','COMMENTATOR','FRAME','BOARD_THEME')
+            """, rs -> { result.put(rs.getString("category"),rs.getString("id")); },playerId);
+        return java.util.Map.copyOf(result);
     }
 
     private List<String> bundleComponents(String id) {

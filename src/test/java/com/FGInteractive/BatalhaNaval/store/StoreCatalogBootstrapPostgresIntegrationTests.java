@@ -38,9 +38,9 @@ class StoreCatalogBootstrapPostgresIntegrationTests {
                 "SELECT applied_revision FROM store_catalog_managed WHERE item_id=?",
                 Integer.class,staged));
         }
-        assertEquals(21,jdbc.queryForObject(
+        assertEquals(35,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_catalog_managed",Integer.class));
-        assertEquals(10,jdbc.queryForObject(
+        assertEquals(24,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_items WHERE enabled=TRUE",Integer.class));
         assertEquals(2,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_bundle_components WHERE bundle_id='bundle_corsair'",
@@ -68,7 +68,7 @@ class StoreCatalogBootstrapPostgresIntegrationTests {
             "SELECT price FROM store_items WHERE id='skin_space'",Integer.class));
         assertEquals(false,jdbc.queryForObject(
             "SELECT enabled FROM store_items WHERE id='skin_corsair'",Boolean.class));
-        assertEquals(21,jdbc.queryForObject(
+        assertEquals(35,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_catalog_managed",Integer.class));
         assertEquals(7,jdbc.queryForObject(
             "SELECT COUNT(*) FROM store_bundle_components",Integer.class));

@@ -99,6 +99,21 @@ class StoreCosmeticsPostgresIntegrationTests {
     }
 
     @Test
+    void expressiveCosmeticsAreOwnedBeforeEquipAndPublicPresentationIsSafe() throws Exception {
+        Player p=player();
+        assertEquals("NOT_OWNED",JsonPath.read(equip(p,"attack_clown",409),"$.code"));
+        purchase(p,"attack_clown",200);
+        equip(p,"attack_clown",200);
+        mvc.perform(post("/api/matchmaking/lobbies").header("Authorization","Bearer "+p.token())
+            .contentType(MediaType.APPLICATION_JSON).content("{\"modeId\":\"classic\"}"))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.players[0].cosmetics.ATTACK").value("attack_clown"))
+            .andExpect(jsonPath("$.players[0].cosmetics.credits").doesNotExist());
+        mvc.perform(delete("/api/matchmaking/lobbies/me").header("Authorization","Bearer "+p.token()))
+            .andExpect(status().isNoContent());
+    }
+
+    @Test
     void anonymousCannotReadOrModifyStore() throws Exception {
         mvc.perform(get("/api/store")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/store/purchase/skin_coral")).andExpect(status().isUnauthorized());

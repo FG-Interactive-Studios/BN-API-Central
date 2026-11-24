@@ -53,6 +53,7 @@ public class MatchmakingService {
     private final Map<Long, String> searching = new LinkedHashMap<>();
     private record QueueAssignment(QueueResponse response, LobbyRoom pairedRoom) {}
     private final UserRepository users;
+    private final com.FGInteractive.BatalhaNaval.store.service.StoreService store;
     private final RealtimeWebSocketHandler realtime;
     private final MatchPreparationStore preparations;
     private final GameModeAvailabilityService modes;
@@ -60,12 +61,14 @@ public class MatchmakingService {
     private final boolean gddEnforced;
 
     public MatchmakingService(UserRepository users, RealtimeWebSocketHandler realtime,
+                              com.FGInteractive.BatalhaNaval.store.service.StoreService store,
                               MatchPreparationStore preparations, GameModeAvailabilityService modes,
                               @Value("${match.disconnect-grace-seconds:15}") long graceSeconds,
                               @Value("${match.gdd-enforced:true}") boolean gddEnforced) {
         if (graceSeconds < 1 || graceSeconds > 3600)
             throw new IllegalArgumentException("Disconnect grace must be between 1 and 3600 seconds");
         this.users = users;
+        this.store = store;
         this.realtime = realtime;
         this.preparations = preparations;
         this.modes = modes;
@@ -322,6 +325,8 @@ public class MatchmakingService {
                 LobbyRoom next = new LobbyRoom(freshCode, original.hostId(),
                     original.hostConnected(), original.mode(), original.publicMatch());
                 next.join(original.guestId(), original.guestConnected());
+                var series = rivalry(original);
+                next.inheritRivalry(series.hostWins(), series.guestWins(), series.draws());
                 next.ready(next.hostId(), true);
                 next.ready(next.guestId(), true); // Transitions directly to PREPARING.
                 if (gddEnforced && GddMatchRules.appliesTo(next.mode())) {
@@ -645,6 +650,18 @@ public class MatchmakingService {
         broadcast(room);
     }
 
+    /** The current finished round is included exactly once, without mutating the score. */
+    private LobbyResponse.RivalryStatus rivalry(LobbyRoom room) {
+        int host=room.priorHostWins(), guest=room.priorGuestWins(), draws=room.priorDraws();
+        if (room.phase() == LobbyRoom.Phase.FINISHED) {
+            Long winner=preparations.battle(room.code()).view(room.hostId()).winnerId();
+            if (winner == null) draws++;
+            else if (winner.longValue()==room.hostId()) host++;
+            else if (Objects.equals(winner,room.guestId())) guest++;
+        }
+        return new LobbyResponse.RivalryStatus(host,guest,draws);
+    }
+
     private LobbyResponse view(LobbyRoom room) {
         List<LobbyPlayer> players = new ArrayList<>(2);
         players.add(player(room.hostId(), room.hostReady(),
@@ -661,13 +678,13 @@ public class MatchmakingService {
                         && room.code().equals(membership.get(room.guestId()))
                         && !room.rematchDeclined(),
                     room.rematchDeclined())
-                : null);
+                : null, rivalry(room));
     }
 
     private LobbyPlayer player(long userId, boolean ready, boolean connected) {
         User user = users.findById(userId)
             .orElseThrow(() -> problem(HttpStatus.UNAUTHORIZED, "Player missing"));
-        return new LobbyPlayer(user.getId(), user.getNickname(), user.getAvatarId(), ready, connected);
+        return new LobbyPlayer(user.getId(), user.getNickname(), user.getAvatarId(), ready, connected,store.equippedPresentation(userId));
     }
 
     private LobbyRoom myRoom(long userId) {
