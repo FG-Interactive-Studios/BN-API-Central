@@ -74,6 +74,21 @@
       "priceSource": "DEMO_PROVISORIO"
     },
     {
+      "id": "sound_pirate",
+      "category": "SOUND",
+      "name": "Canhões Piratas",
+      "description": "Seis efeitos de combate: canhões, água, explosões, naufrágios e comemorações da tripulação.",
+      "price": 140,
+      "displayOrder": 55,
+      "revision": 1,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": [],
+      "priceSource": "DEMO_PROVISORIO"
+    },
+    {
       "id": "sound_deep",
       "category": "SOUND",
       "name": "Mar Profundo",

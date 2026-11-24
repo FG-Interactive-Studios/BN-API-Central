@@ -190,6 +190,21 @@ class StoreCosmeticsPostgresIntegrationTests {
     }
 
     @Test
+    void pirateSoundPackRequiresOwnershipAndCanBeEquipped() throws Exception {
+        Player p=player();
+        assertEquals("NOT_OWNED",JsonPath.read(equip(p,"sound_pirate",409),"$.code"));
+        String bought=purchase(p,"sound_pirate",200);
+        assertEquals(160,((Number)JsonPath.read(bought,"$.credits")).intValue());
+        assertEquals("ALREADY_OWNED",JsonPath.read(purchase(p,"sound_pirate",409),"$.code"));
+        String equipped=equip(p,"sound_pirate",200);
+        assertTrue(JsonPath.read(equipped,"$.items[?(@.id == 'sound_pirate')].equipped").toString().contains("true"));
+        assertFalse(JsonPath.read(equipped,"$.items[?(@.id == 'sound_default')].equipped").toString().contains("true"));
+        String restored=equip(p,"sound_default",200);
+        assertTrue(JsonPath.read(restored,"$.items[?(@.id == 'sound_default')].equipped").toString().contains("true"));
+        assertEquals(160,((Number)JsonPath.read(restored,"$.credits")).intValue());
+    }
+
+    @Test
     void disabledAndUnknownItemsCannotBePurchasedOrEquipped() throws Exception {
         Player p=player();
         assertEquals("ITEM_UNAVAILABLE",JsonPath.read(purchase(p,"sound_deep",409),"$.code"));
