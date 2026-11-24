@@ -12,6 +12,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class StoreService {
     private final JdbcTemplate jdbc;
     private final UserRepository users;
+    @org.springframework.beans.factory.annotation.Value("${store.demo-premium-enabled:true}")
+    private boolean demoPremiumEnabled;
 
     public StoreService(JdbcTemplate jdbc, UserRepository users) {
         this.jdbc = jdbc;
@@ -74,6 +76,49 @@ public class StoreService {
             """, Boolean.class, playerId, itemId));
     }
 
+    private static int premiumPrice(int credits) {
+        return credits / 3 + (credits % 3 == 0 ? 0 : 1);
+    }
+
+    private void requireDemoPremium() {
+        if (!demoPremiumEnabled) throw new StoreException(HttpStatus.CONFLICT,
+            "DEMO_PREMIUM_DISABLED", "A economia premium de demonstração está desativada.");
+    }
+
+    @Transactional
+    public StoreDTO demoTopup(long playerId, String packId, java.util.UUID requestId) {
+        requireDemoPremium();
+        int amount = switch (packId == null ? "" : packId) {
+            case "demo_100" -> 100;
+            case "demo_300" -> 300;
+            case "demo_700" -> 700;
+            default -> throw new StoreException(HttpStatus.BAD_REQUEST, "INVALID_DEMO_PACK",
+                "Pacote de demonstração inválido.");
+        };
+        if (requestId == null) throw new StoreException(HttpStatus.BAD_REQUEST,
+            "REQUEST_ID_REQUIRED", "Identificador da operação obrigatório.");
+        provision(playerId);
+        lockedCredits(playerId);
+        var prior = jdbc.queryForList("""
+            SELECT pack_id FROM demo_premium_topups WHERE user_id=? AND request_id=?
+            """, String.class, playerId, requestId);
+        if (!prior.isEmpty()) {
+            if (!prior.getFirst().equals(packId)) throw new StoreException(HttpStatus.CONFLICT,
+                "REQUEST_ID_REUSED", "Identificador já utilizado para outro pacote.");
+            return snapshot(playerId);
+        }
+        int balance = jdbc.queryForObject("SELECT premium_credits FROM player_wallets WHERE user_id=?",
+            Integer.class, playerId);
+        if (balance > 10000 - amount) throw new StoreException(HttpStatus.CONFLICT,
+            "DEMO_BALANCE_LIMIT", "Limite de créditos premium de demonstração atingido.");
+        jdbc.update("""
+            INSERT INTO demo_premium_topups(user_id,request_id,pack_id,amount) VALUES (?,?,?,?)
+            """,playerId,requestId,packId,amount);
+        jdbc.update("UPDATE player_wallets SET premium_credits=premium_credits+? WHERE user_id=?",
+            amount,playerId);
+        return snapshot(playerId);
+    }
+
     private StoreDTO snapshot(long playerId) {
         var wallet = jdbc.queryForMap(
             "SELECT credits, premium_credits FROM player_wallets WHERE user_id = ?", playerId);
@@ -91,8 +136,8 @@ public class StoreService {
             """, (rs, row) -> new StoreDTO.Item(
                 rs.getString("id"), rs.getString("category"), rs.getString("name"),
                 rs.getString("description"), rs.getInt("price"), rs.getBoolean("enabled"),
-                rs.getBoolean("owned"), rs.getBoolean("equipped")), playerId, playerId);
-        return new StoreDTO(credits, premiumCredits, items);
+                rs.getBoolean("owned"), rs.getBoolean("equipped"), premiumPrice(rs.getInt("price"))), playerId, playerId);
+        return new StoreDTO(credits, premiumCredits, items, demoPremiumEnabled);
     }
 
     @Transactional
@@ -103,6 +148,12 @@ public class StoreService {
 
     @Transactional
     public StoreDTO purchase(long playerId, String itemId) {
+        return purchase(playerId, itemId, false);
+    }
+
+    @Transactional
+    public StoreDTO purchase(long playerId, String itemId, boolean premium) {
+        if (premium) requireDemoPremium();
         provision(playerId);
         // Serializes simultaneous purchases across HTTP requests/instances.
         int credits = lockedCredits(playerId);
@@ -112,12 +163,16 @@ public class StoreService {
             throw new StoreException(HttpStatus.CONFLICT, "ALREADY_OWNED",
                 "Este item já está no seu inventário.");
         }
-        if (credits < item.price()) {
+        int price = premium ? premiumPrice(item.price()) : item.price();
+        int balance = premium ? jdbc.queryForObject(
+            "SELECT premium_credits FROM player_wallets WHERE user_id=?", Integer.class, playerId) : credits;
+        if (balance < price) {
             throw new StoreException(HttpStatus.CONFLICT, "INSUFFICIENT_CREDITS",
                 "Créditos de teste insuficientes.");
         }
-        jdbc.update("UPDATE player_wallets SET credits = credits - ? WHERE user_id = ?",
-            item.price(), playerId);
+        jdbc.update(premium
+            ? "UPDATE player_wallets SET premium_credits = premium_credits - ? WHERE user_id = ?"
+            : "UPDATE player_wallets SET credits = credits - ? WHERE user_id = ?", price, playerId);
         jdbc.update("INSERT INTO player_items (user_id, item_id) VALUES (?, ?)",
             playerId, itemId);
         return snapshot(playerId);

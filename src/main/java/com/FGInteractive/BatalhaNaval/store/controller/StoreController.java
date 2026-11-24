@@ -22,8 +22,16 @@ public class StoreController {
     }
 
     @PostMapping("/purchase/{itemId}")
-    public StoreDTO purchase(@AuthenticationPrincipal Jwt jwt, @PathVariable String itemId) {
-        return store.purchase(Long.parseLong(jwt.getSubject()), itemId);
+    public StoreDTO purchase(@AuthenticationPrincipal Jwt jwt, @PathVariable String itemId,
+                             @RequestParam(defaultValue = "false") boolean premium) {
+        return store.purchase(Long.parseLong(jwt.getSubject()), itemId, premium);
+    }
+
+    public record DemoTopupRequest(String packId, java.util.UUID requestId) {}
+
+    @PostMapping("/demo-premium")
+    public StoreDTO demoPremium(@AuthenticationPrincipal Jwt jwt, @RequestBody DemoTopupRequest request) {
+        return store.demoTopup(Long.parseLong(jwt.getSubject()), request.packId(), request.requestId());
     }
 
     @PutMapping("/equip/{itemId}")

@@ -59,6 +59,28 @@ class StoreCosmeticsPostgresIntegrationTests {
     }
 
     @Test
+    void simulatedPremiumTopupAndPurchaseArePersistentAndIdempotent() throws Exception {
+        Player p=player();
+        UUID requestId=UUID.randomUUID();
+        String body="{\"packId\":\"demo_100\",\"requestId\":\""+requestId+"\"}";
+        for(int i=0;i<2;i++) {
+            mvc.perform(post("/api/store/demo-premium").header("Authorization","Bearer "+p.token())
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.premiumCredits").value(100))
+                .andExpect(jsonPath("$.credits").value(300));
+        }
+        mvc.perform(post("/api/store/purchase/skin_coral").param("premium","true")
+            .header("Authorization","Bearer "+p.token())).andExpect(status().isOk())
+            .andExpect(jsonPath("$.premiumCredits").value(70))
+            .andExpect(jsonPath("$.credits").value(300));
+        mvc.perform(post("/api/store/purchase/skin_coral").param("premium","true")
+            .header("Authorization","Bearer "+p.token())).andExpect(status().isConflict());
+        assertEquals(70,((Number)JsonPath.read(store(p),"$.premiumCredits")).intValue());
+        mvc.perform(post("/api/store/demo-premium").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void anonymousCannotReadOrModifyStore() throws Exception {
         mvc.perform(get("/api/store")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/store/purchase/skin_coral")).andExpect(status().isUnauthorized());

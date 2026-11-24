@@ -2,7 +2,7 @@ package com.FGInteractive.BatalhaNaval.store.dto;
 
 import java.util.List;
 
-public record StoreDTO(int credits, int premiumCredits, List<Item> items) {
+public record StoreDTO(int credits, int premiumCredits, List<Item> items, boolean demoPremiumEnabled) {
     public record Item(String id, String category, String name, String description,
-                       int price, boolean enabled, boolean owned, boolean equipped) {}
+                       int price, boolean enabled, boolean owned, boolean equipped, int premiumPrice) {}
 }
