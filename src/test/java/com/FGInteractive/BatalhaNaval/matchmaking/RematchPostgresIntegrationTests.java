@@ -172,7 +172,11 @@ class RematchPostgresIntegrationTests {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("IDLE"));
             // A different public opponent must not be matched through rematch.
             mvc.perform(get("/api/matchmaking/queue/me").header("Authorization","Bearer "+host.jwt))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("MATCHED"))
+                .andExpect(jsonPath("$.room.status").value("FINISHED"));
+            // The original public room is still visible until the host dismisses the result,
+            // but the host was never re-added to the public search queue.
         } finally {leave(host);leave(guest);}
     }
 
