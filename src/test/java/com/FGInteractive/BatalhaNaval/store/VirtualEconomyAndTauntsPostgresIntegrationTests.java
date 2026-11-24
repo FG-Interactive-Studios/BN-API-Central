@@ -112,7 +112,7 @@ class VirtualEconomyAndTauntsPostgresIntegrationTests {
                 .andExpect(status().isTooManyRequests());
             mvc.perform(post("/api/matches/me/taunts")
                 .header("Authorization","Bearer "+b.token)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"index\":4}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"index\":10}"))
                 .andExpect(status().isBadRequest());
             mvc.perform(post("/api/matches/me/forfeit")
                 .header("Authorization","Bearer "+b.token)).andExpect(status().isOk());
@@ -134,6 +134,41 @@ class VirtualEconomyAndTauntsPostgresIntegrationTests {
             // No cross-account access to the other's wallet or rewards.
             assertEquals(1,jdbc.queryForObject(
                 "SELECT count(*) FROM virtual_match_rewards WHERE user_id=?",Integer.class,a.id()));
+        } finally {leave(a);leave(b);}
+    }
+
+    @Test void newPacksAllowTheFinalPhraseAndEnforceOwnership() throws Exception {
+        Player a=player(),b=player();
+        try {
+            String support=buy(a,"taunt_support");
+            assertEquals(180,((Number)JsonPath.read(support,"$.credits")).intValue());
+            assertEquals(true,JsonPath.read(equip(a,"taunt_support"),
+                "$.items[?(@.id == 'taunt_support')].equipped").toString().contains("true"));
+            String memes=buy(b,"taunt_meme");
+            assertEquals(120,((Number)JsonPath.read(memes,"$.credits")).intValue());
+            assertEquals(true,JsonPath.read(equip(b,"taunt_meme"),
+                "$.items[?(@.id == 'taunt_meme')].equipped").toString().contains("true"));
+            mvc.perform(put("/api/store/equip/taunt_support")
+                .header("Authorization","Bearer "+b.token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("NOT_OWNED"));
+            startBattle(a,b);
+            String supportPhrase=mvc.perform(post("/api/matches/me/taunts")
+                .header("Authorization","Bearer "+a.token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"index\":9}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertEquals("taunt_support",JsonPath.read(supportPhrase,"$.packId"));
+            assertEquals("Nos avalie de 1 a naufrágio. ⭐",JsonPath.read(supportPhrase,"$.message"));
+            String memePhrase=mvc.perform(post("/api/matches/me/taunts")
+                .header("Authorization","Bearer "+b.token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"index\":9}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+            assertEquals("taunt_meme",JsonPath.read(memePhrase,"$.packId"));
+            assertEquals("Meu capitão está em manutenção. 🔧",JsonPath.read(memePhrase,"$.message"));
+            mvc.perform(post("/api/matches/me/taunts")
+                .header("Authorization","Bearer "+a.token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"index\":10}"))
+                .andExpect(status().isBadRequest());
         } finally {leave(a);leave(b);}
     }
 
