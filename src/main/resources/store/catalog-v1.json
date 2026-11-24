@@ -259,6 +259,34 @@
       "priceApproved": true,
       "approvedForSale": true,
       "components": []
+    },
+    {
+      "id": "taunt_support",
+      "category": "TAUNT",
+      "name": "Atendimento Naval",
+      "description": "A central de atendimento que acompanha seu naufrágio com dez respostas absurdas.",
+      "price": 120,
+      "displayOrder": 190,
+      "revision": 1,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": []
+    },
+    {
+      "id": "taunt_meme",
+      "category": "TAUNT",
+      "name": "Almirante dos Memes",
+      "description": "Dez mensagens para rir do caos, do lag e das suas próprias estratégias.",
+      "price": 180,
+      "displayOrder": 200,
+      "revision": 1,
+      "status": "RELEASED",
+      "assetsVerified": true,
+      "priceApproved": true,
+      "approvedForSale": true,
+      "components": []
     }
   ]
 }
